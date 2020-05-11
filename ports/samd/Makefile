@@ -58,6 +58,7 @@ SRC_C = \
 	lib/libm/fmodf.c \
 	lib/libm/math.c \
 	lib/libm/nearbyintf.c \
+	lib/libm/sf_ldexp.c \
 	lib/mp-readline/readline.c \
 	lib/tinyusb/src/class/cdc/cdc_device.c \
 	lib/tinyusb/src/common/tusb_fifo.c \
