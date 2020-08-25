@@ -6,6 +6,10 @@ EXTMOD_SRC_C += extmod/nimble/modbluetooth_nimble.c
 
 CFLAGS_MOD += -DMICROPY_BLUETOOTH_NIMBLE=1
 
+ifneq ("$(MICROPY_PY_BLUETOOTH_DIAGNOSTIC_LOGGING)", "")
+CFLAGS_MOD += -DMICROPY_PY_BLUETOOTH_DIAGNOSTIC_LOGGING=$(MICROPY_PY_BLUETOOTH_DIAGNOSTIC_LOGGING)
+endif
+
 NIMBLE_EXTMOD_DIR = extmod/nimble
 
 # Use NimBLE from the submodule in lib/mynewt-nimble by default,
