@@ -224,9 +224,9 @@ STATIC mp_obj_t ucryptolib_aes_make_new(const mp_obj_type_t *type, size_t n_args
     switch (block_mode) {
         case UCRYPTOLIB_MODE_ECB:
         case UCRYPTOLIB_MODE_CBC:
-        #if MICROPY_PY_UCRYPTOLIB_CTR
+            #if MICROPY_PY_UCRYPTOLIB_CTR
         case UCRYPTOLIB_MODE_CTR:
-        #endif
+            #endif
             break;
 
         default:
@@ -324,12 +324,12 @@ STATIC mp_obj_t aes_process(size_t n_args, const mp_obj_t *args, bool encrypt) {
             aes_process_cbc_impl(&self->ctx, in_bufinfo.buf, out_buf_ptr, in_bufinfo.len, encrypt);
             break;
 
-        #if MICROPY_PY_UCRYPTOLIB_CTR
+            #if MICROPY_PY_UCRYPTOLIB_CTR
         case UCRYPTOLIB_MODE_CTR:
             aes_process_ctr_impl(&self->ctx, in_bufinfo.buf, out_buf_ptr, in_bufinfo.len,
                 ctr_params_from_aes(self));
             break;
-        #endif
+            #endif
     }
 
     if (out_buf != MP_OBJ_NULL) {
@@ -364,7 +364,7 @@ STATIC const mp_obj_type_t ucryptolib_aes_type = {
 #if MICROPY_PY_UCRYPTOLIB_GCM
 
 #if MICROPY_SSL_AXTLS
-#warning GCM is not currentl implementing with axTLS
+#warning GCM is not currently implementing with axTLS
 #endif
 
 #if MICROPY_SSL_MBEDTLS
@@ -392,49 +392,9 @@ STATIC mp_obj_t ucryptolib_aesgcm_make_new(const mp_obj_type_t *type, size_t n_a
     return MP_OBJ_FROM_PTR(o);
 }
 
-STATIC mp_obj_t ucryptolib_aesgcm_enc_dec_check_args(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs,
-    mp_buffer_info_t *nonce, mp_buffer_info_t *input, mp_buffer_info_t *output, mp_buffer_info_t *ad, int in_out_delta) {
-    mp_obj_t out_obj;
-    mp_map_elem_t *map_element;
-
-    if (n_args != 3) {
-        mp_raise_ValueError(MP_ERROR_TEXT("2 positional arguments required"));
-    }
-
-    mp_get_buffer_raise(args[1], nonce, MP_BUFFER_READ);
-    mp_get_buffer_raise(args[2], input, MP_BUFFER_READ);
-
-    size_t output_len = input->len + in_out_delta;
-
-    map_element = mp_map_lookup(kwargs, MP_OBJ_NEW_QSTR(MP_QSTR_out_buf), MP_MAP_LOOKUP);
-    if (map_element != NULL) {
-        out_obj = map_element->value;
-        mp_get_buffer_raise(out_obj, output, MP_BUFFER_WRITE);
-        if (output->len != output_len) {
-            mp_raise_ValueError(MP_ERROR_TEXT("incorrect output length"));
-        }
-    } else {
-        out_obj = MP_OBJ_NULL;
-        output->buf = m_new(char, output_len);
-        output->len = output_len;
-    }
-
-    map_element = mp_map_lookup(kwargs, MP_OBJ_NEW_QSTR(MP_QSTR_adata), MP_MAP_LOOKUP);
-    if (map_element != NULL) {
-        mp_get_buffer_raise(map_element->value, ad, MP_BUFFER_READ);
-    } else {
-        ad->buf = NULL;
-        ad->len = 0;
-    }
-
-    // Maybe this should check for spurious keyword args...
-
-    return out_obj;
-}
-
 #define UCRYPTOLIB_AESGCM_TAG_LEN 16
 
-STATIC mp_obj_t ucryptolib_aesgcm_encrypt(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs) {
+STATIC mp_obj_t ucryptolib_aesgcm_crypt(size_t n_args, const mp_obj_t *args, bool enc) {
     mp_obj_aesgcm_t *self = MP_OBJ_TO_PTR(args[0]);
     mp_buffer_info_t nonce;
     mp_buffer_info_t input;
@@ -442,31 +402,67 @@ STATIC mp_obj_t ucryptolib_aesgcm_encrypt(size_t n_args, const mp_obj_t *args, m
     mp_obj_t out_obj;
     mp_buffer_info_t ad;
 
-    out_obj = ucryptolib_aesgcm_enc_dec_check_args(n_args, args, kwargs,
-        &nonce, &input, &output, &ad,
-        UCRYPTOLIB_AESGCM_TAG_LEN);
+    int in_out_delta = enc ? UCRYPTOLIB_AESGCM_TAG_LEN : -UCRYPTOLIB_AESGCM_TAG_LEN;
+
+    mp_get_buffer_raise(args[1], &nonce, MP_BUFFER_READ);
+    mp_get_buffer_raise(args[2], &input, MP_BUFFER_READ);
+
+    if (input.len + in_out_delta < 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("input too small"));
+    }
+
+    size_t output_len = input.len + in_out_delta;
+
+    if (n_args > 3 && args[3] != mp_const_none) {
+        mp_get_buffer_raise(args[3], &ad, MP_BUFFER_READ);
+        if (ad.len == 0) {
+            ad.buf = NULL;
+        }
+    } else {
+        ad.buf = NULL;
+        ad.len = 0;
+    }
+
+    if (n_args > 4 && args[4] != mp_const_none) {
+        out_obj = args[4];
+        mp_get_buffer_raise(out_obj, &output, MP_BUFFER_WRITE);
+        if (output.len != output_len) {
+            mp_raise_ValueError(MP_ERROR_TEXT("incorrect output length"));
+        }
+    } else {
+        out_obj = MP_OBJ_NULL;
+        output.buf = m_new(char, output_len);
+        output.len = output_len;
+    }
 
     mbedtls_gcm_context gcm;
     int rc;
 
     mbedtls_gcm_init(&gcm);
-
     rc = mbedtls_gcm_setkey(&gcm, MBEDTLS_CIPHER_ID_AES, self->key, self->key_len * 8);
-
-    int plaintext_len = input.len;
-
-    rc = mbedtls_gcm_crypt_and_tag(&gcm, MBEDTLS_GCM_ENCRYPT,
-        plaintext_len,
-        nonce.buf, nonce.len,
-        ad.buf, ad.len,
-        input.buf, output.buf,
-        UCRYPTOLIB_AESGCM_TAG_LEN,
-        ((unsigned char *)output.buf) + plaintext_len);
+    if (rc == 0) {
+        if (enc) {
+            rc = mbedtls_gcm_crypt_and_tag(&gcm, MBEDTLS_GCM_ENCRYPT,
+                input.len,
+                nonce.buf, nonce.len,
+                ad.buf, ad.len,
+                input.buf, output.buf,
+                UCRYPTOLIB_AESGCM_TAG_LEN,
+                ((unsigned char *)output.buf) + input.len);
+        } else {
+            rc = mbedtls_gcm_auth_decrypt(&gcm, input.len - UCRYPTOLIB_AESGCM_TAG_LEN,
+                nonce.buf, nonce.len,
+                ad.buf, ad.len,
+                ((const unsigned char *)input.buf) + input.len - UCRYPTOLIB_AESGCM_TAG_LEN,
+                UCRYPTOLIB_AESGCM_TAG_LEN,
+                input.buf, output.buf);
+        }
+    }
 
     mbedtls_gcm_free(&gcm);
 
     if (rc != 0) {
-        mp_raise_OSError(rc);
+        mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("mbedtls err: %d"), rc);
     }
 
     if (out_obj == MP_OBJ_NULL) {
@@ -476,51 +472,16 @@ STATIC mp_obj_t ucryptolib_aesgcm_encrypt(size_t n_args, const mp_obj_t *args, m
 
     return out_obj;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(ucryptolib_aesgcm_encrypt_obj, 3, ucryptolib_aesgcm_encrypt);
 
-STATIC mp_obj_t ucryptolib_aesgcm_decrypt(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs) {
-    mp_obj_aesgcm_t *self = MP_OBJ_TO_PTR(args[0]);
-    mp_buffer_info_t nonce;
-    mp_buffer_info_t input;
-    mp_buffer_info_t output;
-    mp_obj_t out_obj;
-    mp_buffer_info_t ad;
-
-    out_obj = ucryptolib_aesgcm_enc_dec_check_args(n_args, args, kwargs,
-        &nonce, &input, &output, &ad,
-        -UCRYPTOLIB_AESGCM_TAG_LEN);
-
-    mbedtls_gcm_context gcm;
-    mbedtls_gcm_init(&gcm);
-    mbedtls_gcm_setkey(&gcm, MBEDTLS_CIPHER_ID_AES, self->key, self->key_len * 8);
-
-    int plaintext_len = input.len - UCRYPTOLIB_AESGCM_TAG_LEN;
-
-    int rc = mbedtls_gcm_auth_decrypt(&gcm, plaintext_len,
-        nonce.buf, nonce.len,
-        ad.buf, ad.len,
-        ((const unsigned char *)input.buf) + plaintext_len,
-        UCRYPTOLIB_AESGCM_TAG_LEN,
-        input.buf, output.buf);
-
-    mbedtls_gcm_free(&gcm);
-
-    if (rc == MBEDTLS_ERR_GCM_AUTH_FAILED) {
-        mp_raise_ValueError(MP_ERROR_TEXT("Authentication failed"));
-    }
-
-    if (rc != 0) {
-        mp_raise_OSError(rc);
-    }
-
-    if (out_obj == MP_OBJ_NULL) {
-        out_obj = mp_obj_new_bytes(output.buf, output.len);
-        m_del(char, output.buf, output.len);
-    }
-
-    return out_obj;
+STATIC mp_obj_t ucryptolib_aesgcm_encrypt(size_t n_args, const mp_obj_t *args) {
+    return ucryptolib_aesgcm_crypt(n_args, args, true);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(ucryptolib_aesgcm_decrypt_obj, 3, ucryptolib_aesgcm_decrypt);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(ucryptolib_aesgcm_encrypt_obj, 3, 5, ucryptolib_aesgcm_encrypt);
+
+STATIC mp_obj_t ucryptolib_aesgcm_decrypt(size_t n_args, const mp_obj_t *args) {
+    return ucryptolib_aesgcm_crypt(n_args, args, false);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(ucryptolib_aesgcm_decrypt_obj, 3, 5, ucryptolib_aesgcm_decrypt);
 
 STATIC const mp_rom_map_elem_t ucryptolib_aesgcm_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_encrypt), MP_ROM_PTR(&ucryptolib_aesgcm_encrypt_obj) },
