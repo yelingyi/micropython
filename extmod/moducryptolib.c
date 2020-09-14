@@ -224,9 +224,9 @@ STATIC mp_obj_t ucryptolib_aes_make_new(const mp_obj_type_t *type, size_t n_args
     switch (block_mode) {
         case UCRYPTOLIB_MODE_ECB:
         case UCRYPTOLIB_MODE_CBC:
-            #if MICROPY_PY_UCRYPTOLIB_CTR
+        #if MICROPY_PY_UCRYPTOLIB_CTR
         case UCRYPTOLIB_MODE_CTR:
-            #endif
+        #endif
             break;
 
         default:
@@ -324,12 +324,12 @@ STATIC mp_obj_t aes_process(size_t n_args, const mp_obj_t *args, bool encrypt) {
             aes_process_cbc_impl(&self->ctx, in_bufinfo.buf, out_buf_ptr, in_bufinfo.len, encrypt);
             break;
 
-            #if MICROPY_PY_UCRYPTOLIB_CTR
+        #if MICROPY_PY_UCRYPTOLIB_CTR
         case UCRYPTOLIB_MODE_CTR:
             aes_process_ctr_impl(&self->ctx, in_bufinfo.buf, out_buf_ptr, in_bufinfo.len,
                 ctr_params_from_aes(self));
             break;
-            #endif
+        #endif
     }
 
     if (out_buf != MP_OBJ_NULL) {
