@@ -55,7 +55,7 @@ Classes
 
             * *key* is an encryption/decryption key (bytes-like).
 
-    .. method:: encrypt(nonce, in_buf, out_buf=None, adata=None)
+    .. method:: encrypt(nonce, in_buf, [adata, [out_buf]])
 
         Encrypt the data in the buffer *in_buf* using the one-time
         initialisation value *nonce* and append an authentication tag
@@ -63,14 +63,20 @@ Classes
         data in the buffer *adata*. If no *out_buf* is given the
         result is returned as a newly allocated `bytes`
         object. Otherwise, the result is written into mutable buffer
-        *out_buf*.
+        *out_buf* that should be 16 bytes longer than the input (to
+        have space for the authentication tag). *adata* may be set to
+        `None` if the (positional) *out_buf* is needed by no
+        additional data is to be authenticated.
         
-    .. method:: decrypt(nonce, in_buf, out_buf=None, adata=None)
+    .. method:: decrypt(nonce, in_buf, [adata, [out_buf]])
 
         Decrypt and authenticate the contents of the input buffer
         *in_buf* using the initialisation value *nonce* and optionally
         authenticating the additional data in *adata*. If no *out_buf*
         is given the result is returned as a newly allocated `bytes`
         object. Otherwise, the result is written into mutable buffer
-        *out_buf*.
+        *out_buf* that should be 16 bytes shorter than the input
+        (since the authentication tag will be removed). *adata* may be
+        set to `None` if the (positional) *out_buf* is needed by no
+        additional data is to be authenticated.
         
