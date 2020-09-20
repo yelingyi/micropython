@@ -398,6 +398,7 @@ STATIC mp_obj_t ucryptolib_aesgcm_crypt(size_t n_args, const mp_obj_t *args, boo
     mp_obj_aesgcm_t *self = MP_OBJ_TO_PTR(args[0]);
     mp_buffer_info_t nonce;
     mp_buffer_info_t input;
+    vstr_t output_vstr;
     mp_buffer_info_t output;
     mp_obj_t out_obj;
     mp_buffer_info_t ad;
@@ -431,7 +432,8 @@ STATIC mp_obj_t ucryptolib_aesgcm_crypt(size_t n_args, const mp_obj_t *args, boo
         }
     } else {
         out_obj = MP_OBJ_NULL;
-        output.buf = m_new(char, output_len);
+        vstr_init_len(&output_vstr, output_len);
+        output.buf = (uint8_t *)output_vstr.buf;
         output.len = output_len;
     }
 
@@ -466,8 +468,7 @@ STATIC mp_obj_t ucryptolib_aesgcm_crypt(size_t n_args, const mp_obj_t *args, boo
     }
 
     if (out_obj == MP_OBJ_NULL) {
-        out_obj = mp_obj_new_str_copy(&mp_type_bytes, output.buf, output.len);
-        m_del(char, output.buf, output.len);
+        out_obj =  mp_obj_new_str_from_vstr(&mp_type_bytes, &output_vstr);
     }
 
     return out_obj;
