@@ -468,7 +468,7 @@ STATIC mp_obj_t ucryptolib_aesgcm_crypt(size_t n_args, const mp_obj_t *args, boo
     }
 
     if (out_obj == MP_OBJ_NULL) {
-        out_obj =  mp_obj_new_str_from_vstr(&mp_type_bytes, &output_vstr);
+        out_obj = mp_obj_new_str_from_vstr(&mp_type_bytes, &output_vstr);
     }
 
     return out_obj;
