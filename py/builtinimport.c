@@ -297,7 +297,7 @@ mp_obj_t mp_builtin___import__(size_t n_args, const mp_obj_t *args) {
             this_name_q = mp_obj_dict_get(globals, MP_OBJ_NEW_QSTR(MP_QSTR___main__));
         }
         #endif
-        mp_map_t *globals_map = &((mp_obj_dict_t *)globals)->map;
+        mp_map_t *globals_map = mp_obj_dict_get_map(globals);
         mp_map_elem_t *elem = mp_map_lookup(globals_map, MP_OBJ_NEW_QSTR(MP_QSTR___path__), MP_MAP_LOOKUP);
         bool is_pkg = (elem != NULL);
 
