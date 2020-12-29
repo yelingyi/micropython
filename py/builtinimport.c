@@ -255,7 +255,11 @@ mp_obj_t mp_builtin___import__(size_t n_args, const mp_obj_t *args) {
 
     mp_obj_t module_name = args[0];
     mp_obj_t fromtuple = mp_const_none;
+    mp_obj_t globals = mp_const_none;
     mp_int_t level = 0;
+    if (n_args >= 2) {
+        globals = args[1];
+    }
     if (n_args >= 4) {
         fromtuple = args[3];
         if (n_args >= 5) {
@@ -278,15 +282,22 @@ mp_obj_t mp_builtin___import__(size_t n_args, const mp_obj_t *args) {
         // "Relative imports use a module's __name__ attribute to determine that
         // module's position in the package hierarchy."
         level--;
-        mp_obj_t this_name_q = mp_obj_dict_get(MP_OBJ_FROM_PTR(mp_globals_get()), MP_OBJ_NEW_QSTR(MP_QSTR___name__));
+        if (globals == mp_const_none) {
+            globals = MP_OBJ_FROM_PTR(mp_globals_get());
+        } else {
+            if (!mp_obj_is_type(globals, &mp_type_dict)) {
+                mp_raise_TypeError(MP_ERROR_TEXT("globals must be dict"));
+            }
+        }
+        mp_obj_t this_name_q = mp_obj_dict_get(globals, MP_OBJ_NEW_QSTR(MP_QSTR___name__));
         assert(this_name_q != MP_OBJ_NULL);
         #if MICROPY_CPYTHON_COMPAT
         if (MP_OBJ_QSTR_VALUE(this_name_q) == MP_QSTR___main__) {
             // This is a module run by -m command-line switch, get its real name from backup attribute
-            this_name_q = mp_obj_dict_get(MP_OBJ_FROM_PTR(mp_globals_get()), MP_OBJ_NEW_QSTR(MP_QSTR___main__));
+            this_name_q = mp_obj_dict_get(globals, MP_OBJ_NEW_QSTR(MP_QSTR___main__));
         }
         #endif
-        mp_map_t *globals_map = &mp_globals_get()->map;
+        mp_map_t *globals_map = mp_obj_dict_get_map(globals);
         mp_map_elem_t *elem = mp_map_lookup(globals_map, MP_OBJ_NEW_QSTR(MP_QSTR___path__), MP_MAP_LOOKUP);
         bool is_pkg = (elem != NULL);
 
