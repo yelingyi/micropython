@@ -101,7 +101,6 @@ int mp_hal_stdin_rx_chr(void) {
             return c;
         }
         MICROPY_EVENT_POLL_HOOK
-        ulTaskNotifyTake(pdFALSE, 1);
     }
 }
 
@@ -164,7 +163,6 @@ void mp_hal_delay_ms(uint32_t ms) {
             break;
         }
         MICROPY_EVENT_POLL_HOOK
-        ulTaskNotifyTake(pdFALSE, 1);
     }
     if (dt < us) {
         // do the remaining delay accurately
