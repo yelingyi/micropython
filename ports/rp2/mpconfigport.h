@@ -62,6 +62,7 @@
 #define MICROPY_LONGINT_IMPL                    (MICROPY_LONGINT_IMPL_MPZ)
 #define MICROPY_ENABLE_SOURCE_LINE              (1)
 #define MICROPY_FLOAT_IMPL                      (MICROPY_FLOAT_IMPL_FLOAT)
+#define MICROPY_STREAMS_NON_BLOCK               (1)
 #define MICROPY_MODULE_BUILTIN_INIT             (1)
 #define MICROPY_MODULE_WEAK_LINKS               (1)
 #define MICROPY_CAN_OVERRIDE_BUILTINS           (1)
@@ -102,6 +103,7 @@
 #define MICROPY_PY_URE_SUB                      (1)
 #define MICROPY_PY_UHASHLIB                     (1)
 #define MICROPY_PY_UBINASCII                    (1)
+#define MICROPY_PY_UBINASCII_CRC32              (1)
 #define MICROPY_PY_UTIME_MP_HAL                 (1)
 #define MICROPY_PY_URANDOM                      (1)
 #define MICROPY_PY_URANDOM_EXTRA_FUNCS          (1)
@@ -117,6 +119,12 @@
 #define MICROPY_PY_FRAMEBUF                     (1)
 #define MICROPY_VFS                             (1)
 #define MICROPY_VFS_LFS2                        (1)
+#define MICROPY_VFS_FAT                         (1)
+
+// fatfs configuration
+#define MICROPY_FATFS_ENABLE_LFN                (1)
+#define MICROPY_FATFS_LFN_CODE_PAGE             437 /* 1=SFN/ANSI 437=LFN/U.S.(OEM) */
+#define MICROPY_FATFS_RPATH                     (2)
 
 // Use VfsLfs2's types for fileio/textio
 #define mp_type_fileio mp_type_vfs_lfs2_fileio
