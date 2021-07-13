@@ -24,3 +24,4 @@
  * THE SOFTWARE.
  */
 
+#define MICROPY_PY_UCRYPTOLIB_GCM 1
