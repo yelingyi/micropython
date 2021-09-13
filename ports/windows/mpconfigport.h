@@ -210,10 +210,34 @@ extern const struct _mp_obj_module_t mp_module_time;
     { MP_ROM_QSTR(MP_QSTR_umachine), MP_ROM_PTR(&mp_module_machine) }, \
     { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&mp_module_os) }, \
 
-#if MICROPY_USE_READLINE == 1
-#define MICROPY_PORT_ROOT_POINTERS \
-    char *readline_hist[50];
+#if MICROPY_PY_BLUETOOTH
+extern void mp_thread_windows_begin_atomic_section();
+extern void mp_thread_windows_end_atomic_section();
+#define MICROPY_BEGIN_ATOMIC_SECTION() (mp_thread_windows_begin_atomic_section(), 0xffffffff)
+#define MICROPY_END_ATOMIC_SECTION(x) (void)x; mp_thread_windows_end_atomic_section()
+#if MICROPY_BLUETOOTH_BTSTACK
+struct _mp_bluetooth_btstack_root_pointers_t;
+#define MICROPY_BLUETOOTH_ROOT_POINTERS struct _mp_bluetooth_btstack_root_pointers_t *bluetooth_btstack_root_pointers;
 #endif
+#if MICROPY_BLUETOOTH_NIMBLE
+struct _mp_bluetooth_nimble_root_pointers_t;
+struct _mp_bluetooth_nimble_malloc_t;
+#define MICROPY_BLUETOOTH_ROOT_POINTERS struct _mp_bluetooth_nimble_malloc_t *bluetooth_nimble_memory; struct _mp_bluetooth_nimble_root_pointers_t *bluetooth_nimble_root_pointers;
+#endif
+#else
+#define MICROPY_BLUETOOTH_ROOT_POINTERS
+#endif
+
+#if MICROPY_USE_READLINE == 1
+#define READLINE_ROOT_POINTER char *readline_hist[50];
+#else
+#define READLINE_ROOT_POINTER
+#endif
+
+#define MICROPY_PORT_ROOT_POINTERS \
+    READLINE_ROOT_POINTER \
+    MICROPY_BLUETOOTH_ROOT_POINTERS \
+
 
 #define MP_STATE_PORT               MP_STATE_VM
 
