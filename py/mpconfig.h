@@ -28,7 +28,7 @@
 
 // Current version of MicroPython
 #define MICROPY_VERSION_MAJOR 1
-#define MICROPY_VERSION_MINOR 16
+#define MICROPY_VERSION_MINOR 17
 #define MICROPY_VERSION_MICRO 0
 
 // Combined version as a 32-bit number for convenience
@@ -483,7 +483,8 @@
 /* Optimisations                                                             */
 
 // Whether to use computed gotos in the VM, or a switch
-// Computed gotos are roughly 10% faster, and increase VM code size by a little
+// Computed gotos are roughly 10% faster, and increase VM code size by a little,
+// e.g. ~1kiB on Cortex M4.
 // Note: enabling this will use the gcc-specific extensions of ranged designated
 // initialisers and addresses of labels, which are not part of the C99 standard.
 #ifndef MICROPY_OPT_COMPUTED_GOTO
@@ -1484,8 +1485,18 @@ typedef double mp_float_t;
 #define MICROPY_PY_MACHINE_I2C (0)
 #endif
 
+// Whether to provide the "machine.SoftI2C" class
+#ifndef MICROPY_PY_MACHINE_SOFTI2C
+#define MICROPY_PY_MACHINE_SOFTI2C (0)
+#endif
+
 #ifndef MICROPY_PY_MACHINE_SPI
 #define MICROPY_PY_MACHINE_SPI (0)
+#endif
+
+// Whether to provide the "machine.SoftSPI" class
+#ifndef MICROPY_PY_MACHINE_SOFTSPI
+#define MICROPY_PY_MACHINE_SOFTSPI (0)
 #endif
 
 #ifndef MICROPY_PY_USSL
@@ -1504,6 +1515,11 @@ typedef double mp_float_t;
 
 #ifndef MICROPY_PY_BTREE
 #define MICROPY_PY_BTREE (0)
+#endif
+
+// Whether to provide the low-level "_onewire" module
+#ifndef MICROPY_PY_ONEWIRE
+#define MICROPY_PY_ONEWIRE (0)
 #endif
 
 /*****************************************************************************/
