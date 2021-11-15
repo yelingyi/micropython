@@ -1,9 +1,10 @@
 /*
- * This file is part of the MicroPython project, http://micropython.org/
+ * This file is part of the OpenMV project, https://openmv.io.
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2021 Damien P. George
+ * Copyright (c) 2013-2021 Ibrahim Abdelkader <iabdalkader@openmv.io>
+ * Copyright (c) 2013-2021 Kwabena W. Agyeman <kwagyeman@openmv.io>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,26 +23,17 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * NINA-W10 driver BSP.
  */
+#ifndef MICROPY_INCLUDED_DRIVERS_NINAW10_NINA_BSP_H
+#define MICROPY_INCLUDED_DRIVERS_NINAW10_NINA_BSP_H
 
-#include <stdint.h>
+int nina_bsp_init(void);
+int nina_bsp_deinit(void);
+int nina_bsp_read_irq(void);
+int nina_bsp_spi_slave_select(uint32_t timeout);
+int nina_bsp_spi_slave_deselect(void);
+int nina_bsp_spi_transfer(const uint8_t *tx_buf, uint8_t *rx_buf, uint32_t size);
 
-// Options to control how MicroPython is built
-
-// Use the minimal starting configuration (disables all optional features).
-#define MICROPY_CONFIG_ROM_LEVEL                (MICROPY_CONFIG_ROM_LEVEL_MINIMUM)
-
-// Compiler configuration
-#define MICROPY_ENABLE_COMPILER                 (1)
-
-// Python internal features
-#define MICROPY_ERROR_REPORTING                 (MICROPY_ERROR_REPORTING_NONE)
-
-// Type definitions for the specific machine
-
-typedef int32_t mp_int_t; // must be pointer size
-typedef uint32_t mp_uint_t; // must be pointer size
-typedef long mp_off_t;
-
-// Need to provide a declaration/definition of alloca()
-#include <alloca.h>
+#endif // MICROPY_INCLUDED_DRIVERS_NINAW10_NINA_BSP_H
