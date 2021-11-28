@@ -129,6 +129,10 @@ uint32_t trng_random_u32(void);
 #define MICROPY_PY_MACHINE_PIN_MAKE_NEW     mp_pin_make_new
 #define MICROPY_PY_MACHINE_BITSTREAM        (1)
 #define MICROPY_PY_MACHINE_PULSE            (1)
+#define MICROPY_PY_MACHINE_PWM              (1)
+#define MICROPY_PY_MACHINE_PWM_INIT         (1)
+#define MICROPY_PY_MACHINE_PWM_DUTY_U16_NS  (1)
+#define MICROPY_PY_MACHINE_PWM_INCLUDEFILE  "ports/mimxrt/machine_pwm.c"
 #define MICROPY_PY_MACHINE_I2C              (1)
 #define MICROPY_PY_MACHINE_SOFTI2C          (1)
 #define MICROPY_PY_MACHINE_SPI              (1)
@@ -187,6 +191,23 @@ __attribute__((always_inline)) static inline uint32_t disable_irq(void) {
     uint32_t state = __get_PRIMASK();
     __disable_irq();
     return state;
+}
+
+static inline uint32_t raise_irq_pri(uint32_t pri) {
+    uint32_t basepri = __get_BASEPRI();
+    // If non-zero, the processor does not process any exception with a
+    // priority value greater than or equal to BASEPRI.
+    // When writing to BASEPRI_MAX the write goes to BASEPRI only if either:
+    //   - Rn is non-zero and the current BASEPRI value is 0
+    //   - Rn is non-zero and less than the current BASEPRI value
+    pri <<= (8 - __NVIC_PRIO_BITS);
+    __ASM volatile ("msr basepri_max, %0" : : "r" (pri) : "memory");
+    return basepri;
+}
+
+// "basepri" should be the value returned from raise_irq_pri
+static inline void restore_irq_pri(uint32_t basepri) {
+    __set_BASEPRI(basepri);
 }
 
 #define MICROPY_BEGIN_ATOMIC_SECTION()     disable_irq()
