@@ -47,6 +47,7 @@
 #include "py/mphal.h"
 #include "py/mpthread.h"
 #include "extmod/misc.h"
+#include "extmod/moduplatform.h"
 #include "extmod/vfs.h"
 #include "extmod/vfs_posix.h"
 #include "genhdr/mpversion.h"
@@ -178,7 +179,8 @@ STATIC char *strjoin(const char *s1, int sep_char, const char *s2) {
 
 STATIC int do_repl(void) {
     mp_hal_stdout_tx_str("MicroPython " MICROPY_GIT_TAG " on " MICROPY_BUILD_DATE "; "
-        MICROPY_PY_SYS_PLATFORM " version\nUse Ctrl-D to exit, Ctrl-E for paste mode\n");
+        MICROPY_PY_SYS_PLATFORM " [" MICROPY_PLATFORM_COMPILER "] version\n"
+        "Use Ctrl-D to exit, Ctrl-E for paste mode\n");
 
     #if MICROPY_USE_READLINE == 1
 
@@ -495,11 +497,7 @@ MP_NOINLINE int main_(int argc, char **argv) {
     char *home = getenv("HOME");
     char *path = getenv("MICROPYPATH");
     if (path == NULL) {
-        #ifdef MICROPY_PY_SYS_PATH_DEFAULT
         path = MICROPY_PY_SYS_PATH_DEFAULT;
-        #else
-        path = "~/.micropython/lib:/usr/lib/micropython";
-        #endif
     }
     size_t path_num = 1; // [0] is for current dir (or base dir of the script)
     if (*path == PATHLIST_SEP_CHAR) {
@@ -658,7 +656,7 @@ MP_NOINLINE int main_(int argc, char **argv) {
                 break;
             }
 
-            // Set base dir of the script as first entry in sys.path
+            // Set base dir of the script as first entry in sys.path.
             char *p = strrchr(basedir, '/');
             path_items[0] = mp_obj_new_str_via_qstr(basedir, p - basedir);
             free(pathbuf);

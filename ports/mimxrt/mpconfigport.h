@@ -116,6 +116,7 @@ uint32_t trng_random_u32(void);
 #define MICROPY_PY_URE_MATCH_GROUPS         (1)
 #define MICROPY_PY_URE_MATCH_SPAN_START_END (1)
 #define MICROPY_PY_URE_SUB                  (1)
+#define MICROPY_PY_USSL_FINALISER           (MICROPY_PY_USSL)
 #define MICROPY_PY_UHASHLIB                 (1)
 #define MICROPY_PY_UBINASCII                (1)
 #define MICROPY_PY_UBINASCII_CRC32          (1)
@@ -168,9 +169,11 @@ uint32_t trng_random_u32(void);
 // For regular code that wants to prevent "background tasks" from running.
 // These background tasks (LWIP, Bluetooth) run in PENDSV context.
 // TODO: Check for the settings of the STM32 port in irq.h
-#define MICROPY_PY_PENDSV_ENTER   uint32_t atomic_state = disable_irq();
-#define MICROPY_PY_PENDSV_REENTER atomic_state = disable_irq();
-#define MICROPY_PY_PENDSV_EXIT    enable_irq(atomic_state);
+#define NVIC_PRIORITYGROUP_4    ((uint32_t)0x00000003)
+#define IRQ_PRI_PENDSV          NVIC_EncodePriority(NVIC_PRIORITYGROUP_4, 15, 0)
+#define MICROPY_PY_PENDSV_ENTER   uint32_t atomic_state = raise_irq_pri(IRQ_PRI_PENDSV);
+#define MICROPY_PY_PENDSV_REENTER atomic_state = raise_irq_pri(IRQ_PRI_PENDSV);
+#define MICROPY_PY_PENDSV_EXIT    restore_irq_pri(atomic_state);
 
 // Use VfsLfs2's types for fileio/textio
 #define mp_type_fileio mp_type_vfs_lfs2_fileio
@@ -216,7 +219,6 @@ static inline void restore_irq_pri(uint32_t basepri) {
 #define MICROPY_PORT_BUILTINS \
     { MP_ROM_QSTR(MP_QSTR_open), MP_ROM_PTR(&mp_builtin_open_obj) },
 
-extern const struct _mp_obj_module_t mp_module_machine;
 extern const struct _mp_obj_module_t mp_module_mimxrt;
 extern const struct _mp_obj_module_t mp_module_onewire;
 extern const struct _mp_obj_module_t mp_module_uos;
@@ -255,7 +257,6 @@ extern const struct _mp_obj_type_t network_lan_type;
 #endif
 
 #define MICROPY_PORT_BUILTIN_MODULES \
-    { MP_ROM_QSTR(MP_QSTR_machine), MP_ROM_PTR(&mp_module_machine) }, \
     { MP_ROM_QSTR(MP_QSTR_mimxrt), (mp_obj_t)&mp_module_mimxrt }, \
     { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&mp_module_uos) }, \
     { MP_ROM_QSTR(MP_QSTR_utime), MP_ROM_PTR(&mp_module_utime) }, \
