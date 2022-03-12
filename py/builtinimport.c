@@ -257,7 +257,7 @@ STATIC void do_load(mp_module_context_t *module_obj, vstr_t *file) {
 
 // Convert a relative (to the current module) import, going up "level" levels,
 // into an absolute import.
-STATIC void evaluate_relative_import(mp_int_t level, const char **module_name, size_t *module_name_len) {
+STATIC void evaluate_relative_import(mp_int_t level, const char **module_name, size_t *module_name_len, mp_obj_t globals) {
     // What we want to do here is to take the name of the current module,
     // remove <level> trailing components, and concatenate the passed-in
     // module name.
@@ -266,7 +266,7 @@ STATIC void evaluate_relative_import(mp_int_t level, const char **module_name, s
     // module's position in the package hierarchy."
     // http://legacy.python.org/dev/peps/pep-0328/#relative-imports-and-name
 
-    mp_obj_t current_module_name_obj = mp_obj_dict_get(MP_OBJ_FROM_PTR(mp_globals_get()), MP_OBJ_NEW_QSTR(MP_QSTR___name__));
+    mp_obj_t current_module_name_obj = mp_obj_dict_get(globals, MP_OBJ_NEW_QSTR(MP_QSTR___name__));
     assert(current_module_name_obj != MP_OBJ_NULL);
 
     #if MICROPY_MODULE_OVERRIDE_MAIN_IMPORT && MICROPY_CPYTHON_COMPAT
@@ -274,12 +274,12 @@ STATIC void evaluate_relative_import(mp_int_t level, const char **module_name, s
         // This is a module loaded by -m command-line switch (e.g. unix port),
         // and so its __name__ has been set to "__main__". Get its real name
         // that we stored during import in the __main__ attribute.
-        current_module_name_obj = mp_obj_dict_get(MP_OBJ_FROM_PTR(mp_globals_get()), MP_OBJ_NEW_QSTR(MP_QSTR___main__));
+        current_module_name_obj = mp_obj_dict_get(globals, MP_OBJ_NEW_QSTR(MP_QSTR___main__));
     }
     #endif
 
     // If we have a __path__ in the globals dict, then we're a package.
-    bool is_pkg = mp_map_lookup(&mp_globals_get()->map, MP_OBJ_NEW_QSTR(MP_QSTR___path__), MP_MAP_LOOKUP);
+    bool is_pkg = mp_map_lookup(mp_obj_dict_get_map(globals), MP_OBJ_NEW_QSTR(MP_QSTR___path__), MP_MAP_LOOKUP);
 
     #if DEBUG_PRINT
     DEBUG_printf("Current module/package: ");
@@ -480,6 +480,17 @@ mp_obj_t mp_builtin___import__(size_t n_args, const mp_obj_t *args) {
     // "from ...foo.bar import baz" --> module_name="foo.bar"
     mp_obj_t module_name_obj = args[0];
 
+    // This is the dict with all global symbols.
+    mp_obj_t globals = mp_const_none;
+    if (n_args >= 2) {
+        globals = args[1];
+    }
+    if (globals == mp_const_none) {
+        globals = MP_OBJ_FROM_PTR(mp_globals_get());
+    } else if (!mp_obj_is_type(globals, &mp_type_dict)) {
+        mp_raise_TypeError(MP_ERROR_TEXT("globals must be dict"));
+    }
+
     // These are the imported names.
     // i.e. "from foo.bar import baz, zap" --> fromtuple=("baz", "zap",)
     // Note: There's a special case on the Unix port, where this is set to mp_const_false which means that it's __main__.
@@ -505,7 +516,7 @@ mp_obj_t mp_builtin___import__(size_t n_args, const mp_obj_t *args) {
 
     if (level != 0) {
         // Turn "foo.bar" into "<current module minus 3 components>.foo.bar".
-        evaluate_relative_import(level, &module_name, &module_name_len);
+        evaluate_relative_import(level, &module_name, &module_name_len, globals);
     }
 
     if (module_name_len == 0) {
