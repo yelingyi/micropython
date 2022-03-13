@@ -30,6 +30,7 @@
 // MicroPython runtime API defined in py/obj.h and py/runtime.h.
 
 #include "py/nativeglue.h"
+#include "py/objfun.h"
 #include "py/objstr.h"
 #include "py/objtype.h"
 
@@ -81,6 +82,7 @@ static inline void *m_realloc_dyn(void *ptr, size_t new_num_bytes) {
 
 #define mp_type_type                        (*mp_fun_table.type_type)
 #define mp_type_str                         (*mp_fun_table.type_str)
+#define mp_type_tuple                       (*((mp_obj_base_t *)mp_const_empty_tuple)->type)
 #define mp_type_list                        (*mp_fun_table.type_list)
 #define mp_type_EOFError                    (*(mp_obj_type_t *)(mp_load_global(MP_QSTR_EOFError)))
 #define mp_type_IndexError                  (*(mp_obj_type_t *)(mp_load_global(MP_QSTR_IndexError)))
@@ -121,6 +123,7 @@ static inline void *m_realloc_dyn(void *ptr, size_t new_num_bytes) {
 
 #define mp_obj_len(o)                       (mp_obj_len_dyn(o))
 #define mp_obj_subscr(base, index, val)     (mp_fun_table.obj_subscr((base), (index), (val)))
+#define mp_obj_get_array(o, len, items)     (mp_obj_get_array_dyn((o), (len), (items)))
 #define mp_obj_list_append(list, item)      (mp_fun_table.list_append((list), (item)))
 
 static inline mp_obj_t mp_obj_new_str_of_type_dyn(const mp_obj_type_t *type, const byte *data, size_t len) {
@@ -175,8 +178,8 @@ static inline mp_obj_t mp_obj_len_dyn(mp_obj_t o) {
 #define mp_unary_op(op, obj)        (mp_fun_table.unary_op((op), (obj)))
 #define mp_binary_op(op, lhs, rhs)  (mp_fun_table.binary_op((op), (lhs), (rhs)))
 
-#define mp_make_function_from_raw_code(rc, def_args, def_kw_args) \
-    (mp_fun_table.make_function_from_raw_code((rc), (def_args), (def_kw_args)))
+#define mp_make_function_from_raw_code(rc, context, def_args) \
+    (mp_fun_table.make_function_from_raw_code((rc), (context), (def_args)))
 
 #define mp_call_function_n_kw(fun, n_args, n_kw, args) \
     (mp_fun_table.call_function_n_kw((fun), (n_args) | ((n_kw) << 8), args))
@@ -185,11 +188,10 @@ static inline mp_obj_t mp_obj_len_dyn(mp_obj_t o) {
     (mp_fun_table.arg_check_num_sig((n_args), (n_kw), MP_OBJ_FUN_MAKE_SIG((n_args_min), (n_args_max), (takes_kw))))
 
 #define MP_DYNRUNTIME_INIT_ENTRY \
-    mp_obj_t old_globals = mp_fun_table.swap_globals(self->globals); \
+    mp_obj_t old_globals = mp_fun_table.swap_globals(self->context->module.globals); \
     mp_raw_code_t rc; \
     rc.kind = MP_CODE_NATIVE_VIPER; \
     rc.scope_flags = 0; \
-    rc.const_table = (void *)self->const_table; \
     (void)rc;
 
 #define MP_DYNRUNTIME_INIT_EXIT \
@@ -197,7 +199,7 @@ static inline mp_obj_t mp_obj_len_dyn(mp_obj_t o) {
     return mp_const_none;
 
 #define MP_DYNRUNTIME_MAKE_FUNCTION(f) \
-    (mp_make_function_from_raw_code((rc.fun_data = (f), &rc), MP_OBJ_NULL, MP_OBJ_NULL))
+    (mp_make_function_from_raw_code((rc.fun_data = (f), &rc), self->context, NULL))
 
 #define mp_import_name(name, fromlist, level) \
     (mp_fun_table.import_name((name), (fromlist), (level)))
@@ -213,6 +215,7 @@ static inline mp_obj_t mp_obj_len_dyn(mp_obj_t o) {
 #define mp_obj_new_exception_arg1(e_type, arg)  (mp_obj_new_exception_arg1_dyn((e_type), (arg)))
 
 #define nlr_raise(o)                            (mp_raise_dyn(o))
+#define mp_raise_type_arg(type, arg)            (mp_raise_dyn(mp_obj_new_exception_arg1_dyn((type), (arg))))
 #define mp_raise_msg(type, msg)                 (mp_fun_table.raise_msg((type), (msg)))
 #define mp_raise_OSError(er)                    (mp_raise_OSError_dyn(er))
 #define mp_raise_NotImplementedError(msg)       (mp_raise_msg(&mp_type_NotImplementedError, (msg)))
@@ -250,5 +253,24 @@ static inline void mp_raise_OSError_dyn(int er) {
 #define mp_obj_new_float(f)         (mp_obj_new_float_from_d((f)))
 #define mp_obj_get_float(o)         (mp_obj_get_float_to_d((o)))
 #endif
+
+/******************************************************************************/
+// Inline function definitions.
+
+// *items may point inside a GC block
+static inline void mp_obj_get_array_dyn(mp_obj_t o, size_t *len, mp_obj_t **items) {
+    const mp_obj_type_t *type = mp_obj_get_type(o);
+    if (type == &mp_type_tuple) {
+        mp_obj_tuple_t *t = MP_OBJ_TO_PTR(o);
+        *len = t->len;
+        *items = &t->items[0];
+    } else if (type == &mp_type_list) {
+        mp_obj_list_t *l = MP_OBJ_TO_PTR(o);
+        *len = l->len;
+        *items = l->items;
+    } else {
+        mp_raise_TypeError("expected tuple/list");
+    }
+}
 
 #endif // MICROPY_INCLUDED_PY_DYNRUNTIME_H

@@ -49,7 +49,7 @@
 // detect untraced object still in use
 #define CLEAR_ON_SWEEP (0)
 
-#define WORDS_PER_BLOCK ((MICROPY_BYTES_PER_GC_BLOCK) / BYTES_PER_WORD)
+#define WORDS_PER_BLOCK ((MICROPY_BYTES_PER_GC_BLOCK) / MP_BYTES_PER_OBJ_WORD)
 #define BYTES_PER_BLOCK (MICROPY_BYTES_PER_GC_BLOCK)
 
 // ATB = allocation table byte
@@ -118,9 +118,9 @@ void gc_init(void *start, void *end) {
     // => T = A * (1 + BLOCKS_PER_ATB / BLOCKS_PER_FTB + BLOCKS_PER_ATB * BYTES_PER_BLOCK)
     size_t total_byte_len = (byte *)end - (byte *)start;
     #if MICROPY_ENABLE_FINALISER
-    MP_STATE_MEM(gc_alloc_table_byte_len) = total_byte_len * BITS_PER_BYTE / (BITS_PER_BYTE + BITS_PER_BYTE * BLOCKS_PER_ATB / BLOCKS_PER_FTB + BITS_PER_BYTE * BLOCKS_PER_ATB * BYTES_PER_BLOCK);
+    MP_STATE_MEM(gc_alloc_table_byte_len) = total_byte_len * MP_BITS_PER_BYTE / (MP_BITS_PER_BYTE + MP_BITS_PER_BYTE * BLOCKS_PER_ATB / BLOCKS_PER_FTB + MP_BITS_PER_BYTE * BLOCKS_PER_ATB * BYTES_PER_BLOCK);
     #else
-    MP_STATE_MEM(gc_alloc_table_byte_len) = total_byte_len / (1 + BITS_PER_BYTE / 2 * BYTES_PER_BLOCK);
+    MP_STATE_MEM(gc_alloc_table_byte_len) = total_byte_len / (1 + MP_BITS_PER_BYTE / 2 * BYTES_PER_BLOCK);
     #endif
 
     MP_STATE_MEM(gc_alloc_table_start) = (byte *)start;
@@ -150,7 +150,7 @@ void gc_init(void *start, void *end) {
     MP_STATE_MEM(gc_last_free_atb_index) = 0;
 
     // unlock the GC
-    MP_STATE_MEM(gc_lock_depth) = 0;
+    MP_STATE_THREAD(gc_lock_depth) = 0;
 
     // allow auto collection
     MP_STATE_MEM(gc_auto_collect_enabled) = 1;
@@ -174,19 +174,20 @@ void gc_init(void *start, void *end) {
 }
 
 void gc_lock(void) {
-    GC_ENTER();
-    MP_STATE_MEM(gc_lock_depth)++;
-    GC_EXIT();
+    // This does not need to be atomic or have the GC mutex because:
+    // - each thread has its own gc_lock_depth so there are no races between threads;
+    // - a hard interrupt will only change gc_lock_depth during its execution, and
+    //   upon return will restore the value of gc_lock_depth.
+    MP_STATE_THREAD(gc_lock_depth)++;
 }
 
 void gc_unlock(void) {
-    GC_ENTER();
-    MP_STATE_MEM(gc_lock_depth)--;
-    GC_EXIT();
+    // This does not need to be atomic, See comment above in gc_lock.
+    MP_STATE_THREAD(gc_lock_depth)--;
 }
 
 bool gc_is_locked(void) {
-    return MP_STATE_MEM(gc_lock_depth) != 0;
+    return MP_STATE_THREAD(gc_lock_depth) != 0;
 }
 
 // ptr should be of type void*
@@ -212,6 +213,7 @@ STATIC void gc_mark_subtree(size_t block) {
     // Start with the block passed in the argument.
     size_t sp = 0;
     for (;;) {
+        MICROPY_GC_HOOK_LOOP
         // work out number of consecutive blocks in the chain starting with this one
         size_t n_blocks = 0;
         do {
@@ -221,6 +223,7 @@ STATIC void gc_mark_subtree(size_t block) {
         // check this block's children
         void **ptrs = (void **)PTR_FROM_BLOCK(block);
         for (size_t i = n_blocks * BYTES_PER_BLOCK / sizeof(void *); i > 0; i--, ptrs++) {
+            MICROPY_GC_HOOK_LOOP
             void *ptr = *ptrs;
             if (VERIFY_PTR(ptr)) {
                 // Mark and push this pointer
@@ -254,6 +257,7 @@ STATIC void gc_deal_with_stack_overflow(void) {
 
         // scan entire memory looking for blocks which have been marked but not their children
         for (size_t block = 0; block < MP_STATE_MEM(gc_alloc_table_byte_len) * BLOCKS_PER_ATB; block++) {
+            MICROPY_GC_HOOK_LOOP
             // trace (again) if mark bit set
             if (ATB_GET_KIND(block) == AT_MARK) {
                 gc_mark_subtree(block);
@@ -269,6 +273,7 @@ STATIC void gc_sweep(void) {
     // free unmarked heads and their tails
     int free_tail = 0;
     for (size_t block = 0; block < MP_STATE_MEM(gc_alloc_table_byte_len) * BLOCKS_PER_ATB; block++) {
+        MICROPY_GC_HOOK_LOOP
         switch (ATB_GET_KIND(block)) {
             case AT_HEAD:
                 #if MICROPY_ENABLE_FINALISER
@@ -294,7 +299,7 @@ STATIC void gc_sweep(void) {
                 }
                 #endif
                 free_tail = 1;
-                DEBUG_printf("gc_sweep(%p)\n", PTR_FROM_BLOCK(block));
+                DEBUG_printf("gc_sweep(%p)\n", (void *)PTR_FROM_BLOCK(block));
                 #if MICROPY_PY_GC_COLLECT_RETVAL
                 MP_STATE_MEM(gc_collected)++;
                 #endif
@@ -320,7 +325,7 @@ STATIC void gc_sweep(void) {
 
 void gc_collect_start(void) {
     GC_ENTER();
-    MP_STATE_MEM(gc_lock_depth)++;
+    MP_STATE_THREAD(gc_lock_depth)++;
     #if MICROPY_GC_ALLOC_THRESHOLD
     MP_STATE_MEM(gc_alloc_amount) = 0;
     #endif
@@ -341,9 +346,20 @@ void gc_collect_start(void) {
     #endif
 }
 
+// Address sanitizer needs to know that the access to ptrs[i] must always be
+// considered OK, even if it's a load from an address that would normally be
+// prohibited (due to being undefined, in a red zone, etc).
+#if defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8))
+__attribute__((no_sanitize_address))
+#endif
+static void *gc_get_ptr(void **ptrs, int i) {
+    return ptrs[i];
+}
+
 void gc_collect_root(void **ptrs, size_t len) {
     for (size_t i = 0; i < len; i++) {
-        void *ptr = ptrs[i];
+        MICROPY_GC_HOOK_LOOP
+        void *ptr = gc_get_ptr(ptrs, i);
         if (VERIFY_PTR(ptr)) {
             size_t block = BLOCK_FROM_PTR(ptr);
             if (ATB_GET_KIND(block) == AT_HEAD) {
@@ -360,13 +376,13 @@ void gc_collect_end(void) {
     gc_deal_with_stack_overflow();
     gc_sweep();
     MP_STATE_MEM(gc_last_free_atb_index) = 0;
-    MP_STATE_MEM(gc_lock_depth)--;
+    MP_STATE_THREAD(gc_lock_depth)--;
     GC_EXIT();
 }
 
 void gc_sweep_all(void) {
     GC_ENTER();
-    MP_STATE_MEM(gc_lock_depth)++;
+    MP_STATE_THREAD(gc_lock_depth)++;
     MP_STATE_MEM(gc_stack_overflow) = 0;
     gc_collect_end();
 }
@@ -445,13 +461,12 @@ void *gc_alloc(size_t n_bytes, unsigned int alloc_flags) {
         return NULL;
     }
 
-    GC_ENTER();
-
     // check if GC is locked
-    if (MP_STATE_MEM(gc_lock_depth) > 0) {
-        GC_EXIT();
+    if (MP_STATE_THREAD(gc_lock_depth) > 0) {
         return NULL;
     }
+
+    GC_ENTER();
 
     size_t i;
     size_t end_block;
@@ -573,12 +588,12 @@ void *gc_alloc_with_finaliser(mp_uint_t n_bytes) {
 // force the freeing of a piece of memory
 // TODO: freeing here does not call finaliser
 void gc_free(void *ptr) {
-    GC_ENTER();
-    if (MP_STATE_MEM(gc_lock_depth) > 0) {
+    if (MP_STATE_THREAD(gc_lock_depth) > 0) {
         // TODO how to deal with this error?
-        GC_EXIT();
         return;
     }
+
+    GC_ENTER();
 
     DEBUG_printf("gc_free(%p)\n", ptr);
 
@@ -674,14 +689,13 @@ void *gc_realloc(void *ptr_in, size_t n_bytes, bool allow_move) {
         return NULL;
     }
 
+    if (MP_STATE_THREAD(gc_lock_depth) > 0) {
+        return NULL;
+    }
+
     void *ptr = ptr_in;
 
     GC_ENTER();
-
-    if (MP_STATE_MEM(gc_lock_depth) > 0) {
-        GC_EXIT();
-        return NULL;
-    }
 
     // get the GC block number corresponding to this pointer
     assert(VERIFY_PTR(ptr));
@@ -906,13 +920,13 @@ void gc_dump_alloc_table(void) {
                     // This code prints "Q" for qstr-pool data, and "q" for qstr-str
                     // data.  It can be useful to see how qstrs are being allocated,
                     // but is disabled by default because it is very slow.
-                    for (qstr_pool_t *pool = MP_STATE_VM(last_pool); c == 'h' && pool != NULL; pool = pool->prev) {
-                        if ((qstr_pool_t *)ptr == pool) {
+                    for (const qstr_pool_t *pool = MP_STATE_VM(last_pool); c == 'h' && pool != NULL; pool = pool->prev) {
+                        if ((const qstr_pool_t *)ptr == pool) {
                             c = 'Q';
                             break;
                         }
-                        for (const byte **q = pool->qstrs, **q_top = pool->qstrs + pool->len; q < q_top; q++) {
-                            if ((const byte *)ptr == *q) {
+                        for (const char *const *q = pool->qstrs, *const *q_top = pool->qstrs + pool->len; q < q_top; q++) {
+                            if ((const char *)ptr == *q) {
                                 c = 'q';
                                 break;
                             }

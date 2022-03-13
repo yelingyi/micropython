@@ -40,6 +40,10 @@ Core functions
 
     Returns the corresponding `Task` object.
 
+.. function:: current_task()
+
+    Return the `Task` object associated with the currently running task.
+
 .. function:: run(coro)
 
     Create a new task from the given coroutine and run it until it completes.
@@ -64,11 +68,13 @@ Additional functions
 .. function:: wait_for(awaitable, timeout)
 
     Wait for the *awaitable* to complete, but cancel it if it takes longer
-    that *timeout* seconds.  If *awaitable* is not a task then a task will be
+    than *timeout* seconds.  If *awaitable* is not a task then a task will be
     created from it.
 
     If a timeout occurs, it cancels the task and raises ``asyncio.TimeoutError``:
-    this should be trapped by the caller.
+    this should be trapped by the caller.  The task receives
+    ``asyncio.CancelledError`` which may be ignored or trapped using ``try...except``
+    or ``try...finally`` to run cleanup code.
 
     Returns the return value of *awaitable*.
 
@@ -102,8 +108,9 @@ class Task
 
 .. method:: Task.cancel()
 
-    Cancel the task by injecting a ``CancelledError`` into it.  The task may
-    or may not ignore this exception.
+    Cancel the task by injecting ``asyncio.CancelledError`` into it.  The task may
+    ignore this exception.  Cleanup code may be run by trapping it, or via
+    ``try ... finally``.
 
 class Event
 -----------
@@ -121,6 +128,9 @@ class Event
 
     Set the event.  Any tasks waiting on the event will be scheduled to run.
 
+    Note: This must be called from within a task. It is not safe to call this
+    from an IRQ, scheduler callback, or other thread. See `ThreadSafeFlag`.
+
 .. method:: Event.clear()
 
     Clear the event.
@@ -129,6 +139,29 @@ class Event
 
     Wait for the event to be set.  If the event is already set then it returns
     immediately.
+
+    This is a coroutine.
+
+class ThreadSafeFlag
+--------------------
+
+.. class:: ThreadSafeFlag()
+
+    Create a new flag which can be used to synchronise a task with code running
+    outside the asyncio loop, such as other threads, IRQs, or scheduler
+    callbacks.  Flags start in the cleared state.
+
+.. method:: ThreadSafeFlag.set()
+
+    Set the flag.  If there is a task waiting on the event, it will be scheduled
+    to run.
+
+.. method:: ThreadSafeFlag.wait()
+
+    Wait for the flag to be set.  If the flag is already set then it returns
+    immediately.  The flag is automatically reset upon return from ``wait``.
+
+    A flag may only be waited on by a single task at a time.
 
     This is a coroutine.
 
@@ -184,7 +217,7 @@ TCP stream connections
     This is a coroutine.
 
 .. class:: Stream()
-    
+
     This represents a TCP stream connection.  To minimise code this class implements
     both a reader and a writer, and both ``StreamReader`` and ``StreamWriter`` alias to
     this class.
@@ -207,6 +240,22 @@ TCP stream connections
 .. method:: Stream.read(n)
 
     Read up to *n* bytes and return them.
+
+    This is a coroutine.
+
+.. method:: Stream.readinto(buf)
+
+    Read up to n bytes into *buf* with n being equal to the length of *buf*.
+
+    Return the number of bytes read into *buf*.
+
+    This is a coroutine, and a MicroPython extension.
+
+.. method:: Stream.readexactly(n)
+
+    Read exactly *n* bytes and return them as a bytes object.
+
+    Raises an ``EOFError`` exception if the stream ends before reading *n* bytes.
 
     This is a coroutine.
 

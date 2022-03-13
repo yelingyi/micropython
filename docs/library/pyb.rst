@@ -126,7 +126,7 @@ Power related functions
     - pclk2: frequency of the APB2 bus
 
    If given any arguments then the function sets the frequency of the CPU,
-   and the busses if additional arguments are given.  Frequencies are given in
+   and the buses if additional arguments are given.  Frequencies are given in
    Hz.  Eg freq(120000000) sets sysclk (the CPU frequency) to 120MHz.  Note that
    not all values are supported and the largest supported frequency not greater
    than the given value will be selected.
@@ -213,11 +213,11 @@ Miscellaneous functions
 .. function:: mount(device, mountpoint, *, readonly=False, mkfs=False)
 
    .. note:: This function is deprecated. Mounting and unmounting devices should
-      be performed by :meth:`uos.mount` and :meth:`uos.umount` instead.
+      be performed by :meth:`os.mount` and :meth:`os.umount` instead.
 
    Mount a block device and make it available as part of the filesystem.
    ``device`` must be an object that provides the block protocol. (The
-   following is also deprecated. See :class:`uos.AbstractBlockDev` for the
+   following is also deprecated. See :class:`os.AbstractBlockDev` for the
    correct way to create a block device.)
 
     - ``readblocks(self, blocknum, buf)``
@@ -297,6 +297,15 @@ Miscellaneous functions
 
    The *high_speed* parameter, when set to ``True``, enables USB HS mode if
    it is supported by the hardware.
+
+Constants
+---------
+
+.. data:: pyb.hid_mouse
+          pyb.hid_keyboard
+
+   A tuple of (subclass, protocol, max packet length, polling interval, report
+   descriptor) to set appropriate values for a USB mouse or keyboard.
 
 Classes
 -------

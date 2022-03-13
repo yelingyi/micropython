@@ -29,6 +29,7 @@
 #include "autoconf.h"
 // Included here to get basic Zephyr environment (macros, etc.)
 #include <zephyr.h>
+#include <drivers/spi.h>
 
 // Usually passed from Makefile
 #ifndef MICROPY_HEAP_SIZE
@@ -52,6 +53,7 @@
 #define MICROPY_PY_BUILTINS_REVERSED (0)
 #define MICROPY_PY_BUILTINS_SET     (0)
 #define MICROPY_PY_BUILTINS_STR_COUNT (0)
+#define MICROPY_PY_BUILTINS_MEMORYVIEW (1)
 #define MICROPY_PY_BUILTINS_HELP    (1)
 #define MICROPY_PY_BUILTINS_HELP_TEXT zephyr_help_text
 #define MICROPY_PY_ARRAY            (0)
@@ -61,6 +63,9 @@
 #define MICROPY_PY_MICROPYTHON_MEM_INFO (1)
 #define MICROPY_PY_MACHINE          (1)
 #define MICROPY_PY_MACHINE_I2C      (1)
+#define MICROPY_PY_MACHINE_SPI      (1)
+#define MICROPY_PY_MACHINE_SPI_MSB (SPI_TRANSFER_MSB)
+#define MICROPY_PY_MACHINE_SPI_LSB (SPI_TRANSFER_LSB)
 #define MICROPY_PY_MACHINE_PIN_MAKE_NEW mp_pin_make_new
 #define MICROPY_MODULE_WEAK_LINKS   (1)
 #define MICROPY_PY_STRUCT           (0)
@@ -68,6 +73,13 @@
 // If we have networking, we likely want errno comfort
 #define MICROPY_PY_UERRNO           (1)
 #define MICROPY_PY_USOCKET          (1)
+#endif
+#ifdef CONFIG_BT
+#define MICROPY_PY_BLUETOOTH        (1)
+#ifdef CONFIG_BT_CENTRAL
+#define MICROPY_PY_BLUETOOTH_ENABLE_CENTRAL_MODE (1)
+#endif
+#define MICROPY_PY_BLUETOOTH_ENABLE_GATT_CLIENT (0)
 #endif
 #define MICROPY_PY_UBINASCII        (1)
 #define MICROPY_PY_UHASHLIB         (1)
@@ -96,6 +108,9 @@
 #define MICROPY_COMP_CONST (0)
 #define MICROPY_COMP_DOUBLE_TUPLE_ASSIGN (0)
 
+void mp_hal_signal_event(void);
+#define MICROPY_SCHED_HOOK_SCHEDULED mp_hal_signal_event()
+
 #define MICROPY_PY_SYS_PLATFORM "zephyr"
 
 #ifdef CONFIG_BOARD
@@ -110,7 +125,7 @@
 #define MICROPY_HW_MCU_NAME "unknown-cpu"
 #endif
 
-#define MICROPY_MODULE_FROZEN_STR   (1)
+#define MICROPY_MODULE_FROZEN_STR   (0)
 
 typedef int mp_int_t; // must be pointer size
 typedef unsigned mp_uint_t; // must be pointer size
@@ -120,9 +135,9 @@ typedef long mp_off_t;
 
 #define MICROPY_PORT_ROOT_POINTERS \
     const char *readline_hist[8]; \
-    void *machine_pin_irq_list; /* Linked list of pin irq objects */
+    void *machine_pin_irq_list; /* Linked list of pin irq objects */ \
+    struct _mp_bluetooth_zephyr_root_pointers_t *bluetooth_zephyr_root_pointers;
 
-extern const struct _mp_obj_module_t mp_module_machine;
 extern const struct _mp_obj_module_t mp_module_time;
 extern const struct _mp_obj_module_t mp_module_uos;
 extern const struct _mp_obj_module_t mp_module_usocket;
@@ -160,7 +175,6 @@ extern const struct _mp_obj_module_t mp_module_zsensor;
 #endif
 
 #define MICROPY_PORT_BUILTIN_MODULES \
-    { MP_ROM_QSTR(MP_QSTR_machine), MP_ROM_PTR(&mp_module_machine) }, \
     MICROPY_PY_UOS_DEF \
     MICROPY_PY_USOCKET_DEF \
     MICROPY_PY_UTIME_DEF \

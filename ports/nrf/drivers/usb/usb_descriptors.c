@@ -26,8 +26,10 @@
 
 #include "tusb.h"
 
-#define USBD_VID (0xf055)
-#define USBD_PID (0x9802)
+#ifndef MICROPY_HW_USB_VID
+#define MICROPY_HW_USB_VID (0xf055)
+#define MICROPY_HW_USB_PID (0x9802)
+#endif
 
 #define USBD_DESC_LEN (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN)
 #define USBD_MAX_POWER_MA (250)
@@ -57,8 +59,8 @@ static const tusb_desc_device_t usbd_desc_device = {
     .bDeviceSubClass    = MISC_SUBCLASS_COMMON,
     .bDeviceProtocol    = MISC_PROTOCOL_IAD,
     .bMaxPacketSize0    = CFG_TUD_ENDOINT0_SIZE,
-    .idVendor           = USBD_VID,
-    .idProduct          = USBD_PID,
+    .idVendor           = MICROPY_HW_USB_VID,
+    .idProduct          = MICROPY_HW_USB_PID,
     .bcdDevice          = 0x0100,
     .iManufacturer      = USBD_STR_MANUF,
     .iProduct           = USBD_STR_PRODUCT,
@@ -67,7 +69,7 @@ static const tusb_desc_device_t usbd_desc_device = {
 };
 
 static const uint8_t usbd_desc_cfg[USBD_DESC_LEN] = {
-    TUD_CONFIG_DESCRIPTOR(USBD_ITF_MAX, USBD_STR_0, USBD_DESC_LEN,
+    TUD_CONFIG_DESCRIPTOR(1, USBD_ITF_MAX, USBD_STR_0, USBD_DESC_LEN,
         TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, USBD_MAX_POWER_MA),
 
     TUD_CDC_DESCRIPTOR(USBD_ITF_CDC, USBD_STR_CDC, USBD_CDC_EP_CMD,
@@ -90,7 +92,7 @@ const uint8_t *tud_descriptor_configuration_cb(uint8_t index) {
     return usbd_desc_cfg;
 }
 
-const uint16_t *tud_descriptor_string_cb(uint8_t index) {
+const uint16_t *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     #define DESC_STR_MAX (20)
     static uint16_t desc_str[DESC_STR_MAX];
 

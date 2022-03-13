@@ -47,8 +47,14 @@
 #define CAN_FIFO1                   FDCAN_RX_FIFO1
 #define CAN_FILTER_FIFO0            (0)
 
-// Default timings; 125Kbps assuming 48MHz clock
+// Default timings; 125Kbps
+#if defined(STM32G4)
+// assuming 24MHz clock
+#define CAN_DEFAULT_PRESCALER       (16)
+#else
+// assuming 48MHz clock
 #define CAN_DEFAULT_PRESCALER       (32)
+#endif
 #define CAN_DEFAULT_SJW             (1)
 #define CAN_DEFAULT_BS1             (8)
 #define CAN_DEFAULT_BS2             (3)
@@ -60,8 +66,10 @@
 
 #define CAN1_RX0_IRQn               FDCAN1_IT0_IRQn
 #define CAN1_RX1_IRQn               FDCAN1_IT1_IRQn
+#if defined(CAN2)
 #define CAN2_RX0_IRQn               FDCAN2_IT0_IRQn
 #define CAN2_RX1_IRQn               FDCAN2_IT1_IRQn
+#endif
 
 #define CAN_IT_FIFO0_FULL           FDCAN_IT_RX_FIFO0_FULL
 #define CAN_IT_FIFO1_FULL           FDCAN_IT_RX_FIFO1_FULL
@@ -140,9 +148,41 @@ STATIC void pyb_can_print(const mp_print_t *print, mp_obj_t self_in, mp_print_ki
     }
 }
 
+STATIC uint32_t pyb_can_get_source_freq() {
+    uint32_t can_kern_clk = 0;
+
+    // Find CAN kernel clock
+    #if defined(STM32H7)
+    switch (__HAL_RCC_GET_FDCAN_SOURCE()) {
+        case RCC_FDCANCLKSOURCE_HSE:
+            can_kern_clk = HSE_VALUE;
+            break;
+        case RCC_FDCANCLKSOURCE_PLL: {
+            PLL1_ClocksTypeDef pll1_clocks;
+            HAL_RCCEx_GetPLL1ClockFreq(&pll1_clocks);
+            can_kern_clk = pll1_clocks.PLL1_Q_Frequency;
+            break;
+        }
+        case RCC_FDCANCLKSOURCE_PLL2: {
+            PLL2_ClocksTypeDef pll2_clocks;
+            HAL_RCCEx_GetPLL2ClockFreq(&pll2_clocks);
+            can_kern_clk = pll2_clocks.PLL2_Q_Frequency;
+            break;
+        }
+    }
+    #else // F4 and F7 and assume other MCUs too.
+    // CAN1/CAN2/CAN3 on APB1 use GetPCLK1Freq, alternatively use the following:
+    // can_kern_clk = ((HSE_VALUE / osc_config.PLL.PLLM ) * osc_config.PLL.PLLN) /
+    //  (osc_config.PLL.PLLQ * clk_init.AHBCLKDivider * clk_init.APB1CLKDivider);
+    can_kern_clk = HAL_RCC_GetPCLK1Freq();
+    #endif
+
+    return can_kern_clk;
+}
+
 // init(mode, extframe=False, prescaler=100, *, sjw=1, bs1=6, bs2=8)
 STATIC mp_obj_t pyb_can_init_helper(pyb_can_obj_t *self, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    enum { ARG_mode, ARG_extframe, ARG_prescaler, ARG_sjw, ARG_bs1, ARG_bs2, ARG_auto_restart };
+    enum { ARG_mode, ARG_extframe, ARG_prescaler, ARG_sjw, ARG_bs1, ARG_bs2, ARG_auto_restart, ARG_baudrate, ARG_sample_point };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_mode,         MP_ARG_REQUIRED | MP_ARG_INT,   {.u_int = CAN_MODE_NORMAL} },
         { MP_QSTR_extframe,     MP_ARG_BOOL,                    {.u_bool = false} },
@@ -151,6 +191,8 @@ STATIC mp_obj_t pyb_can_init_helper(pyb_can_obj_t *self, size_t n_args, const mp
         { MP_QSTR_bs1,          MP_ARG_KW_ONLY | MP_ARG_INT,    {.u_int = CAN_DEFAULT_BS1} },
         { MP_QSTR_bs2,          MP_ARG_KW_ONLY | MP_ARG_INT,    {.u_int = CAN_DEFAULT_BS2} },
         { MP_QSTR_auto_restart, MP_ARG_KW_ONLY | MP_ARG_BOOL,   {.u_bool = false} },
+        { MP_QSTR_baudrate,     MP_ARG_KW_ONLY | MP_ARG_INT,    {.u_int = 0} },
+        { MP_QSTR_sample_point, MP_ARG_KW_ONLY | MP_ARG_INT,    {.u_int = 75} }, // 75% sampling point
     };
 
     // parse args
@@ -161,6 +203,32 @@ STATIC mp_obj_t pyb_can_init_helper(pyb_can_obj_t *self, size_t n_args, const mp
 
     // set the CAN configuration values
     memset(&self->can, 0, sizeof(self->can));
+
+    // Calculate CAN bit timing from baudrate if provided
+    if (args[ARG_baudrate].u_int != 0) {
+        uint32_t baudrate = args[ARG_baudrate].u_int;
+        uint32_t sampoint = args[ARG_sample_point].u_int;
+        uint32_t can_kern_clk = pyb_can_get_source_freq();
+        bool timing_found = false;
+
+        // The following max values work on all MCUs for classical CAN.
+        for (int brp = 1; brp < 512 && !timing_found; brp++) {
+            for (int bs1 = 1; bs1 < 16 && !timing_found; bs1++) {
+                for (int bs2 = 1; bs2 < 8 && !timing_found; bs2++) {
+                    if ((baudrate == (can_kern_clk / (brp * (1 + bs1 + bs2)))) &&
+                        ((sampoint * 10) == (((1 + bs1) * 1000) / (1 + bs1 + bs2)))) {
+                        args[ARG_bs1].u_int = bs1;
+                        args[ARG_bs2].u_int = bs2;
+                        args[ARG_prescaler].u_int = brp;
+                        timing_found = true;
+                    }
+                }
+            }
+        }
+        if (!timing_found) {
+            mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("couldn't match baudrate and sample point"));
+        }
+    }
 
     // init CAN (if it fails, it's because the port doesn't exist)
     if (!can_init(self, args[ARG_mode].u_int, args[ARG_prescaler].u_int, args[ARG_sjw].u_int,
@@ -201,6 +269,11 @@ STATIC mp_obj_t pyb_can_make_new(const mp_obj_type_t *type, size_t n_args, size_
     }
     if (can_idx < 1 || can_idx > MP_ARRAY_SIZE(MP_STATE_PORT(pyb_can_obj_all))) {
         mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("CAN(%d) doesn't exist"), can_idx);
+    }
+
+    // check if the CAN is reserved for system use or not
+    if (MICROPY_HW_CAN_IS_RESERVED(can_idx)) {
+        mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("CAN(%d) is reserved"), can_idx);
     }
 
     pyb_can_obj_t *self;
@@ -261,6 +334,9 @@ STATIC mp_obj_t pyb_can_restart(mp_obj_t self_in) {
     can->CCCR |= FDCAN_CCCR_INIT;
     while ((can->CCCR & FDCAN_CCCR_INIT) == 0) {
     }
+    can->CCCR |= FDCAN_CCCR_CCE;
+    while ((can->CCCR & FDCAN_CCCR_CCE) == 0) {
+    }
     can->CCCR &= ~FDCAN_CCCR_INIT;
     while ((can->CCCR & FDCAN_CCCR_INIT)) {
     }
@@ -283,11 +359,12 @@ STATIC mp_obj_t pyb_can_state(mp_obj_t self_in) {
     if (self->is_enabled) {
         CAN_TypeDef *can = self->can.Instance;
         #if MICROPY_HW_ENABLE_FDCAN
-        if (can->PSR & FDCAN_PSR_BO) {
+        uint32_t psr = can->PSR;
+        if (psr & FDCAN_PSR_BO) {
             state = CAN_STATE_BUS_OFF;
-        } else if (can->PSR & FDCAN_PSR_EP) {
+        } else if (psr & FDCAN_PSR_EP) {
             state = CAN_STATE_ERROR_PASSIVE;
-        } else if (can->PSR & FDCAN_PSR_EW) {
+        } else if (psr & FDCAN_PSR_EW) {
             state = CAN_STATE_ERROR_WARNING;
         } else {
             state = CAN_STATE_ERROR_ACTIVE;
@@ -310,10 +387,6 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(pyb_can_state_obj, pyb_can_state);
 
 // Get info about error states and TX/RX buffers
 STATIC mp_obj_t pyb_can_info(size_t n_args, const mp_obj_t *args) {
-    #if MICROPY_HW_ENABLE_FDCAN
-    // TODO implement for FDCAN
-    return mp_const_none;
-    #else
     pyb_can_obj_t *self = MP_OBJ_TO_PTR(args[0]);
     mp_obj_list_t *list;
     if (n_args == 1) {
@@ -327,6 +400,20 @@ STATIC mp_obj_t pyb_can_info(size_t n_args, const mp_obj_t *args) {
             mp_raise_ValueError(NULL);
         }
     }
+
+    #if MICROPY_HW_ENABLE_FDCAN
+    FDCAN_GlobalTypeDef *can = self->can.Instance;
+    uint32_t esr = can->ECR;
+    list->items[0] = MP_OBJ_NEW_SMALL_INT((esr & FDCAN_ECR_TEC_Msk) >> FDCAN_ECR_TEC_Pos);
+    list->items[1] = MP_OBJ_NEW_SMALL_INT((esr & FDCAN_ECR_REC_Msk) >> FDCAN_ECR_REC_Pos);
+    list->items[2] = MP_OBJ_NEW_SMALL_INT(self->num_error_warning);
+    list->items[3] = MP_OBJ_NEW_SMALL_INT(self->num_error_passive);
+    list->items[4] = MP_OBJ_NEW_SMALL_INT(self->num_bus_off);
+    uint32_t TXEFS = can->TXEFS;
+    list->items[5] = MP_OBJ_NEW_SMALL_INT(TXEFS & 0x7);
+    list->items[6] = MP_OBJ_NEW_SMALL_INT((can->RXF0S & FDCAN_RXF0S_F0FL_Msk) >> FDCAN_RXF0S_F0FL_Pos);
+    list->items[7] = MP_OBJ_NEW_SMALL_INT((can->RXF1S & FDCAN_RXF1S_F1FL_Msk) >> FDCAN_RXF1S_F1FL_Pos);
+    #else
     CAN_TypeDef *can = self->can.Instance;
     uint32_t esr = can->ESR;
     list->items[0] = MP_OBJ_NEW_SMALL_INT(esr >> CAN_ESR_TEC_Pos & 0xff);
@@ -338,8 +425,9 @@ STATIC mp_obj_t pyb_can_info(size_t n_args, const mp_obj_t *args) {
     list->items[5] = MP_OBJ_NEW_SMALL_INT(n_tx_pending);
     list->items[6] = MP_OBJ_NEW_SMALL_INT(can->RF0R >> CAN_RF0R_FMP0_Pos & 3);
     list->items[7] = MP_OBJ_NEW_SMALL_INT(can->RF1R >> CAN_RF1R_FMP1_Pos & 3);
-    return MP_OBJ_FROM_PTR(list);
     #endif
+
+    return MP_OBJ_FROM_PTR(list);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_can_info_obj, 1, 2, pyb_can_info);
 

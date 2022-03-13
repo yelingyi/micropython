@@ -33,7 +33,9 @@
 #include "py/runtime.h"
 #include "extmod/machine_i2c.h"
 
-#if MICROPY_PY_MACHINE_I2C
+#define SOFT_I2C_DEFAULT_TIMEOUT_US (50000) // 50ms
+
+#if MICROPY_PY_MACHINE_SOFTI2C
 
 typedef mp_machine_soft_i2c_obj_t machine_i2c_obj_t;
 
@@ -240,8 +242,12 @@ int mp_machine_soft_i2c_transfer(mp_obj_base_t *self_in, uint16_t addr, size_t n
     return transfer_ret;
 }
 
+#endif // MICROPY_PY_MACHINE_SOFTI2C
+
 /******************************************************************************/
 // Generic helper functions
+
+#if MICROPY_PY_MACHINE_I2C || MICROPY_PY_MACHINE_SOFTI2C
 
 // For use by ports that require a single buffer of data for a read/write transfer
 int mp_machine_i2c_transfer_adaptor(mp_obj_base_t *self, uint16_t addr, size_t n, mp_machine_i2c_buf_t *bufs, unsigned int flags) {
@@ -628,8 +634,12 @@ STATIC const mp_rom_map_elem_t machine_i2c_locals_dict_table[] = {
 };
 MP_DEFINE_CONST_DICT(mp_machine_i2c_locals_dict, machine_i2c_locals_dict_table);
 
+#endif // MICROPY_PY_MACHINE_I2C || MICROPY_PY_MACHINE_SOFTI2C
+
 /******************************************************************************/
 // Implementation of soft I2C
+
+#if MICROPY_PY_MACHINE_SOFTI2C
 
 STATIC void mp_machine_soft_i2c_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     mp_machine_soft_i2c_obj_t *self = MP_OBJ_TO_PTR(self_in);
@@ -643,7 +653,7 @@ STATIC void mp_machine_soft_i2c_init(mp_obj_base_t *self_in, size_t n_args, cons
         { MP_QSTR_scl, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
         { MP_QSTR_sda, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
         { MP_QSTR_freq, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 400000} },
-        { MP_QSTR_timeout, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 255} },
+        { MP_QSTR_timeout, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = SOFT_I2C_DEFAULT_TIMEOUT_US} },
     };
 
     mp_machine_soft_i2c_obj_t *self = (mp_machine_soft_i2c_obj_t *)self_in;
@@ -711,4 +721,4 @@ const mp_obj_type_t mp_machine_soft_i2c_type = {
     .locals_dict = (mp_obj_dict_t *)&mp_machine_i2c_locals_dict,
 };
 
-#endif // MICROPY_PY_MACHINE_I2C
+#endif // MICROPY_PY_MACHINE_SOFTI2C

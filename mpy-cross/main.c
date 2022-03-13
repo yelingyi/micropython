@@ -72,7 +72,8 @@ STATIC int compile_and_save(const char *file, const char *output_file, const cha
         #endif
 
         mp_parse_tree_t parse_tree = mp_parse(lex, MP_PARSE_FILE_INPUT);
-        mp_raw_code_t *rc = mp_compile_to_raw_code(&parse_tree, source_name, false);
+        mp_module_context_t *ctx = m_new_obj(mp_module_context_t);
+        mp_compiled_module_t cm = mp_compile_to_raw_code(&parse_tree, source_name, false, ctx);
 
         vstr_t vstr;
         vstr_init(&vstr, 16);
@@ -83,7 +84,7 @@ STATIC int compile_and_save(const char *file, const char *output_file, const cha
         } else {
             vstr_add_str(&vstr, output_file);
         }
-        mp_raw_code_save_file(rc, vstr_null_terminated_str(&vstr));
+        mp_raw_code_save_file(&cm, vstr_null_terminated_str(&vstr));
         vstr_clear(&vstr);
 
         nlr_pop();
@@ -108,7 +109,6 @@ STATIC int usage(char **argv) {
         "Target specific options:\n"
         "-msmall-int-bits=number : set the maximum bits used to encode a small-int\n"
         "-mno-unicode : don't support unicode in compiled strings\n"
-        "-mcache-lookup-bc : cache map lookups in the bytecode\n"
         "-march=<arch> : set architecture for native emitter; x86, x64, armv6, armv7m, armv7em, armv7emsp, armv7emdp, xtensa, xtensawin\n"
         "\n"
         "Implementation specific options:\n", argv[0]
@@ -170,7 +170,7 @@ STATIC void pre_process_options(int argc, char **argv) {
                         heap_size *= 1024 * 1024;
                     }
                     if (word_adjust) {
-                        heap_size = heap_size * BYTES_PER_WORD / 4;
+                        heap_size = heap_size * MP_BYTES_PER_OBJ_WORD / 4;
                     }
                 } else {
                     exit(usage(argv));
@@ -182,7 +182,7 @@ STATIC void pre_process_options(int argc, char **argv) {
 }
 
 MP_NOINLINE int main_(int argc, char **argv) {
-    mp_stack_set_limit(40000 * (BYTES_PER_WORD / 4));
+    mp_stack_set_limit(40000 * (sizeof(void *) / 4));
 
     pre_process_options(argc, argv);
 
@@ -193,8 +193,6 @@ MP_NOINLINE int main_(int argc, char **argv) {
     #ifdef _WIN32
     set_fmode_binary();
     #endif
-    mp_obj_list_init(mp_sys_path, 0);
-    mp_obj_list_init(mp_sys_argv, 0);
 
     #if MICROPY_EMIT_NATIVE
     // Set default emitter options
@@ -205,7 +203,6 @@ MP_NOINLINE int main_(int argc, char **argv) {
 
     // set default compiler configuration
     mp_dynamic_compiler.small_int_bits = 31;
-    mp_dynamic_compiler.opt_cache_map_lookup_in_bytecode = 0;
     mp_dynamic_compiler.py_builtins_str_unicode = 1;
     #if defined(__i386__)
     mp_dynamic_compiler.native_arch = MP_NATIVE_ARCH_X86;
@@ -264,10 +261,6 @@ MP_NOINLINE int main_(int argc, char **argv) {
                     return usage(argv);
                 }
                 // TODO check that small_int_bits is within range of host's capabilities
-            } else if (strcmp(argv[a], "-mno-cache-lookup-bc") == 0) {
-                mp_dynamic_compiler.opt_cache_map_lookup_in_bytecode = 0;
-            } else if (strcmp(argv[a], "-mcache-lookup-bc") == 0) {
-                mp_dynamic_compiler.opt_cache_map_lookup_in_bytecode = 1;
             } else if (strcmp(argv[a], "-mno-unicode") == 0) {
                 mp_dynamic_compiler.py_builtins_str_unicode = 0;
             } else if (strcmp(argv[a], "-municode") == 0) {

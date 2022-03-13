@@ -30,6 +30,7 @@
 #include <string.h>
 
 #include "driver/gpio.h"
+#include "driver/rtc_io.h"
 
 #include "py/runtime.h"
 #include "py/mphal.h"
@@ -39,10 +40,20 @@
 #include "machine_rtc.h"
 #include "modesp32.h"
 
+#if CONFIG_IDF_TARGET_ESP32C3
+#include "hal/gpio_ll.h"
+#endif
+
 // Used to implement a range of pull capabilities
 #define GPIO_PULL_DOWN (1)
 #define GPIO_PULL_UP   (2)
 #define GPIO_PULL_HOLD (4)
+
+#if CONFIG_IDF_TARGET_ESP32
+#define GPIO_FIRST_NON_OUTPUT (34)
+#elif CONFIG_IDF_TARGET_ESP32S2
+#define GPIO_FIRST_NON_OUTPUT (46)
+#endif
 
 typedef struct _machine_pin_obj_t {
     mp_obj_base_t base;
@@ -55,6 +66,8 @@ typedef struct _machine_pin_irq_obj_t {
 } machine_pin_irq_obj_t;
 
 STATIC const machine_pin_obj_t machine_pin_obj[] = {
+    #if CONFIG_IDF_TARGET_ESP32
+
     {{&machine_pin_type}, GPIO_NUM_0},
     {{&machine_pin_type}, GPIO_NUM_1},
     {{&machine_pin_type}, GPIO_NUM_2},
@@ -71,8 +84,13 @@ STATIC const machine_pin_obj_t machine_pin_obj[] = {
     {{&machine_pin_type}, GPIO_NUM_13},
     {{&machine_pin_type}, GPIO_NUM_14},
     {{&machine_pin_type}, GPIO_NUM_15},
+    #if CONFIG_ESP32_SPIRAM_SUPPORT
+    {{NULL}, -1},
+    {{NULL}, -1},
+    #else
     {{&machine_pin_type}, GPIO_NUM_16},
     {{&machine_pin_type}, GPIO_NUM_17},
+    #endif
     {{&machine_pin_type}, GPIO_NUM_18},
     {{&machine_pin_type}, GPIO_NUM_19},
     {{NULL}, -1},
@@ -95,6 +113,104 @@ STATIC const machine_pin_obj_t machine_pin_obj[] = {
     {{&machine_pin_type}, GPIO_NUM_37},
     {{&machine_pin_type}, GPIO_NUM_38},
     {{&machine_pin_type}, GPIO_NUM_39},
+
+    #elif CONFIG_IDF_TARGET_ESP32C3
+
+    {{&machine_pin_type}, GPIO_NUM_0},
+    {{&machine_pin_type}, GPIO_NUM_1},
+    {{&machine_pin_type}, GPIO_NUM_2},
+    {{&machine_pin_type}, GPIO_NUM_3},
+    {{&machine_pin_type}, GPIO_NUM_4},
+    {{&machine_pin_type}, GPIO_NUM_5},
+    {{&machine_pin_type}, GPIO_NUM_6},
+    {{&machine_pin_type}, GPIO_NUM_7},
+    {{&machine_pin_type}, GPIO_NUM_8},
+    {{&machine_pin_type}, GPIO_NUM_9},
+    {{&machine_pin_type}, GPIO_NUM_10},
+    {{&machine_pin_type}, GPIO_NUM_11},
+    {{&machine_pin_type}, GPIO_NUM_12},
+    {{&machine_pin_type}, GPIO_NUM_13},
+    {{NULL}, -1}, // 14 FLASH
+    {{NULL}, -1}, // 15 FLASH
+    {{NULL}, -1}, // 16 FLASH
+    {{NULL}, -1}, // 17 FLASH
+    #if CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+    {{NULL}, -1}, // 18 is for native USB D-
+    {{NULL}, -1}, // 19 is for native USB D+
+    #else
+    {{&machine_pin_type}, GPIO_NUM_18},
+    {{&machine_pin_type}, GPIO_NUM_19},
+    #endif
+    {{&machine_pin_type}, GPIO_NUM_20},
+    {{&machine_pin_type}, GPIO_NUM_21},
+
+    #elif CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3
+
+    {{&machine_pin_type}, GPIO_NUM_0},
+    {{&machine_pin_type}, GPIO_NUM_1},
+    {{&machine_pin_type}, GPIO_NUM_2},
+    {{&machine_pin_type}, GPIO_NUM_3},
+    {{&machine_pin_type}, GPIO_NUM_4},
+    {{&machine_pin_type}, GPIO_NUM_5},
+    {{&machine_pin_type}, GPIO_NUM_6},
+    {{&machine_pin_type}, GPIO_NUM_7},
+    {{&machine_pin_type}, GPIO_NUM_8},
+    {{&machine_pin_type}, GPIO_NUM_9},
+    {{&machine_pin_type}, GPIO_NUM_10},
+    {{&machine_pin_type}, GPIO_NUM_11},
+    {{&machine_pin_type}, GPIO_NUM_12},
+    {{&machine_pin_type}, GPIO_NUM_13},
+    {{&machine_pin_type}, GPIO_NUM_14},
+    {{&machine_pin_type}, GPIO_NUM_15},
+    {{&machine_pin_type}, GPIO_NUM_16},
+    {{&machine_pin_type}, GPIO_NUM_17},
+    {{&machine_pin_type}, GPIO_NUM_18},
+    #if CONFIG_USB_CDC_ENABLED
+    {{NULL}, -1}, // 19 is for native USB D-
+    {{NULL}, -1}, // 20 is for native USB D-
+    #else
+    {{&machine_pin_type}, GPIO_NUM_19},
+    {{&machine_pin_type}, GPIO_NUM_20},
+    #endif
+    {{&machine_pin_type}, GPIO_NUM_21},
+    {{NULL}, -1}, // 22 not a pin
+    {{NULL}, -1}, // 23 not a pin
+    {{NULL}, -1}, // 24 not a pin
+    {{NULL}, -1}, // 25 not a pin
+    #if CONFIG_SPIRAM
+    {{NULL}, -1}, // 26 PSRAM
+    #else
+    {{&machine_pin_type}, GPIO_NUM_26},
+    #endif
+    {{NULL}, -1}, // 27 FLASH/PSRAM
+    {{NULL}, -1}, // 28 FLASH/PSRAM
+    {{NULL}, -1}, // 29 FLASH/PSRAM
+    {{NULL}, -1}, // 30 FLASH/PSRAM
+    {{NULL}, -1}, // 31 FLASH/PSRAM
+    {{NULL}, -1}, // 32 FLASH/PSRAM
+    {{&machine_pin_type}, GPIO_NUM_33},
+    {{&machine_pin_type}, GPIO_NUM_34},
+    {{&machine_pin_type}, GPIO_NUM_35},
+    {{&machine_pin_type}, GPIO_NUM_36},
+    {{&machine_pin_type}, GPIO_NUM_37},
+    {{&machine_pin_type}, GPIO_NUM_38},
+    {{&machine_pin_type}, GPIO_NUM_39}, // MTCLK
+    {{&machine_pin_type}, GPIO_NUM_40}, // MTDO
+    {{&machine_pin_type}, GPIO_NUM_41}, // MTDI
+    {{&machine_pin_type}, GPIO_NUM_42}, // MTMS
+    {{&machine_pin_type}, GPIO_NUM_43}, // U0TXD
+    {{&machine_pin_type}, GPIO_NUM_44}, // U0RXD
+    {{&machine_pin_type}, GPIO_NUM_45},
+    {{&machine_pin_type}, GPIO_NUM_46},
+
+    #endif
+
+    #if CONFIG_IDF_TARGET_ESP32S3 && MICROPY_HW_ESP32S3_EXTENDED_IO
+
+    {{&machine_pin_type}, GPIO_NUM_47},
+    {{&machine_pin_type}, GPIO_NUM_48},
+
+    #endif
 };
 
 // forward declaration
@@ -137,23 +253,34 @@ STATIC void machine_pin_print(const mp_print_t *print, mp_obj_t self_in, mp_prin
     mp_printf(print, "Pin(%u)", self->id);
 }
 
-// pin.init(mode, pull=None, *, value)
+// pin.init(mode=None, pull=-1, *, value, drive)
 STATIC mp_obj_t machine_pin_obj_init_helper(const machine_pin_obj_t *self, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    enum { ARG_mode, ARG_pull, ARG_value };
+    enum { ARG_mode, ARG_pull, ARG_value, ARG_drive };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_mode, MP_ARG_OBJ, {.u_obj = mp_const_none}},
         { MP_QSTR_pull, MP_ARG_OBJ, {.u_obj = MP_OBJ_NEW_SMALL_INT(-1)}},
         { MP_QSTR_value, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL}},
+        { MP_QSTR_drive, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL}},
     };
 
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    // reset the pin first if this is a mode-setting init (grab it back from ADC)
+    // reset the pin to digital if this is a mode-setting init (grab it back from ADC)
     if (args[ARG_mode].u_obj != mp_const_none) {
-        gpio_reset_pin(self->id);
+        if (rtc_gpio_is_valid_gpio(self->id)) {
+            #if !CONFIG_IDF_TARGET_ESP32C3
+            rtc_gpio_deinit(self->id);
+            #endif
+        }
     }
+
+    #if CONFIG_IDF_TARGET_ESP32C3
+    if (self->id == 18 || self->id == 19) {
+        CLEAR_PERI_REG_MASK(USB_DEVICE_CONF0_REG, USB_DEVICE_USB_PAD_ENABLE);
+    }
+    #endif
 
     // configure the pin for gpio
     gpio_pad_select_gpio(self->id);
@@ -163,14 +290,23 @@ STATIC mp_obj_t machine_pin_obj_init_helper(const machine_pin_obj_t *self, size_
         gpio_set_level(self->id, mp_obj_is_true(args[ARG_value].u_obj));
     }
 
+    // set drive capability (do this before configuring mode)
+    if (args[ARG_drive].u_obj != MP_OBJ_NULL && GPIO_IS_VALID_OUTPUT_GPIO(self->id)) {
+        mp_int_t strength = mp_obj_get_int(args[ARG_drive].u_obj);
+        if (0 <= strength && strength < GPIO_DRIVE_CAP_MAX) {
+            gpio_set_drive_capability(self->id, strength);
+        }
+    }
+
     // configure mode
     if (args[ARG_mode].u_obj != mp_const_none) {
         mp_int_t pin_io_mode = mp_obj_get_int(args[ARG_mode].u_obj);
-        if (self->id >= 34 && (pin_io_mode & GPIO_MODE_DEF_OUTPUT)) {
+        #ifdef GPIO_FIRST_NON_OUTPUT
+        if (self->id >= GPIO_FIRST_NON_OUTPUT && (pin_io_mode & GPIO_MODE_DEF_OUTPUT)) {
             mp_raise_ValueError(MP_ERROR_TEXT("pin can only be input"));
-        } else {
-            gpio_set_direction(self->id, pin_io_mode);
         }
+        #endif
+        gpio_set_direction(self->id, pin_io_mode);
     }
 
     // configure pull
@@ -349,6 +485,10 @@ STATIC const mp_rom_map_elem_t machine_pin_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_IRQ_FALLING), MP_ROM_INT(GPIO_PIN_INTR_NEGEDGE) },
     { MP_ROM_QSTR(MP_QSTR_WAKE_LOW), MP_ROM_INT(GPIO_PIN_INTR_LOLEVEL) },
     { MP_ROM_QSTR(MP_QSTR_WAKE_HIGH), MP_ROM_INT(GPIO_PIN_INTR_HILEVEL) },
+    { MP_ROM_QSTR(MP_QSTR_DRIVE_0), MP_ROM_INT(GPIO_DRIVE_CAP_0) },
+    { MP_ROM_QSTR(MP_QSTR_DRIVE_1), MP_ROM_INT(GPIO_DRIVE_CAP_1) },
+    { MP_ROM_QSTR(MP_QSTR_DRIVE_2), MP_ROM_INT(GPIO_DRIVE_CAP_2) },
+    { MP_ROM_QSTR(MP_QSTR_DRIVE_3), MP_ROM_INT(GPIO_DRIVE_CAP_3) },
 };
 
 STATIC mp_uint_t pin_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *errcode) {
@@ -389,6 +529,8 @@ const mp_obj_type_t machine_pin_type = {
 STATIC const mp_obj_type_t machine_pin_irq_type;
 
 STATIC const machine_pin_irq_obj_t machine_pin_irq_object[] = {
+    #if CONFIG_IDF_TARGET_ESP32
+
     {{&machine_pin_irq_type}, GPIO_NUM_0},
     {{&machine_pin_irq_type}, GPIO_NUM_1},
     {{&machine_pin_irq_type}, GPIO_NUM_2},
@@ -405,8 +547,13 @@ STATIC const machine_pin_irq_obj_t machine_pin_irq_object[] = {
     {{&machine_pin_irq_type}, GPIO_NUM_13},
     {{&machine_pin_irq_type}, GPIO_NUM_14},
     {{&machine_pin_irq_type}, GPIO_NUM_15},
+    #if CONFIG_ESP32_SPIRAM_SUPPORT
+    {{NULL}, -1},
+    {{NULL}, -1},
+    #else
     {{&machine_pin_irq_type}, GPIO_NUM_16},
     {{&machine_pin_irq_type}, GPIO_NUM_17},
+    #endif
     {{&machine_pin_irq_type}, GPIO_NUM_18},
     {{&machine_pin_irq_type}, GPIO_NUM_19},
     {{NULL}, -1},
@@ -429,6 +576,99 @@ STATIC const machine_pin_irq_obj_t machine_pin_irq_object[] = {
     {{&machine_pin_irq_type}, GPIO_NUM_37},
     {{&machine_pin_irq_type}, GPIO_NUM_38},
     {{&machine_pin_irq_type}, GPIO_NUM_39},
+
+    #elif CONFIG_IDF_TARGET_ESP32C3
+
+    {{&machine_pin_irq_type}, GPIO_NUM_0},
+    {{&machine_pin_irq_type}, GPIO_NUM_1},
+    {{&machine_pin_irq_type}, GPIO_NUM_2},
+    {{&machine_pin_irq_type}, GPIO_NUM_3},
+    {{&machine_pin_irq_type}, GPIO_NUM_4},
+    {{&machine_pin_irq_type}, GPIO_NUM_5},
+    {{&machine_pin_irq_type}, GPIO_NUM_6},
+    {{&machine_pin_irq_type}, GPIO_NUM_7},
+    {{&machine_pin_irq_type}, GPIO_NUM_8},
+    {{&machine_pin_irq_type}, GPIO_NUM_9},
+    {{&machine_pin_irq_type}, GPIO_NUM_10},
+    {{&machine_pin_irq_type}, GPIO_NUM_11},
+    {{&machine_pin_irq_type}, GPIO_NUM_12},
+    {{&machine_pin_irq_type}, GPIO_NUM_13},
+    {{&machine_pin_irq_type}, GPIO_NUM_14},
+    {{&machine_pin_irq_type}, GPIO_NUM_15},
+    {{&machine_pin_irq_type}, GPIO_NUM_16},
+    {{&machine_pin_irq_type}, GPIO_NUM_17},
+    {{&machine_pin_irq_type}, GPIO_NUM_18},
+    {{&machine_pin_irq_type}, GPIO_NUM_19},
+    {{&machine_pin_irq_type}, GPIO_NUM_20},
+    {{&machine_pin_irq_type}, GPIO_NUM_21},
+
+    #elif CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3
+
+    {{&machine_pin_irq_type}, GPIO_NUM_0},
+    {{&machine_pin_irq_type}, GPIO_NUM_1},
+    {{&machine_pin_irq_type}, GPIO_NUM_2},
+    {{&machine_pin_irq_type}, GPIO_NUM_3},
+    {{&machine_pin_irq_type}, GPIO_NUM_4},
+    {{&machine_pin_irq_type}, GPIO_NUM_5},
+    {{&machine_pin_irq_type}, GPIO_NUM_6},
+    {{&machine_pin_irq_type}, GPIO_NUM_7},
+    {{&machine_pin_irq_type}, GPIO_NUM_8},
+    {{&machine_pin_irq_type}, GPIO_NUM_9},
+    {{&machine_pin_irq_type}, GPIO_NUM_10},
+    {{&machine_pin_irq_type}, GPIO_NUM_11},
+    {{&machine_pin_irq_type}, GPIO_NUM_12},
+    {{&machine_pin_irq_type}, GPIO_NUM_13},
+    {{&machine_pin_irq_type}, GPIO_NUM_14},
+    {{&machine_pin_irq_type}, GPIO_NUM_15},
+    {{&machine_pin_irq_type}, GPIO_NUM_16},
+    {{&machine_pin_irq_type}, GPIO_NUM_17},
+    {{&machine_pin_irq_type}, GPIO_NUM_18},
+    #if CONFIG_USB_CDC_ENABLED
+    {{NULL}, -1}, // 19 is for native USB D-
+    {{NULL}, -1}, // 20 is for native USB D-
+    #else
+    {{&machine_pin_irq_type}, GPIO_NUM_19},
+    {{&machine_pin_irq_type}, GPIO_NUM_20},
+    #endif
+    {{&machine_pin_irq_type}, GPIO_NUM_21},
+    {{NULL}, -1}, // 22 not a pin
+    {{NULL}, -1}, // 23 not a pin
+    {{NULL}, -1}, // 24 not a pin
+    {{NULL}, -1}, // 25 not a pin
+    #if CONFIG_SPIRAM
+    {{NULL}, -1}, // 26 PSRAM
+    #else
+    {{&machine_pin_irq_type}, GPIO_NUM_26},
+    #endif
+    {{NULL}, -1}, // 27 FLASH/PSRAM
+    {{NULL}, -1}, // 28 FLASH/PSRAM
+    {{NULL}, -1}, // 29 FLASH/PSRAM
+    {{NULL}, -1}, // 30 FLASH/PSRAM
+    {{NULL}, -1}, // 31 FLASH/PSRAM
+    {{NULL}, -1}, // 32 FLASH/PSRAM
+    {{&machine_pin_irq_type}, GPIO_NUM_33},
+    {{&machine_pin_irq_type}, GPIO_NUM_34},
+    {{&machine_pin_irq_type}, GPIO_NUM_35},
+    {{&machine_pin_irq_type}, GPIO_NUM_36},
+    {{&machine_pin_irq_type}, GPIO_NUM_37},
+    {{&machine_pin_irq_type}, GPIO_NUM_38},
+    {{&machine_pin_irq_type}, GPIO_NUM_39},
+    {{&machine_pin_irq_type}, GPIO_NUM_40},
+    {{&machine_pin_irq_type}, GPIO_NUM_41},
+    {{&machine_pin_irq_type}, GPIO_NUM_42},
+    {{&machine_pin_irq_type}, GPIO_NUM_43},
+    {{&machine_pin_irq_type}, GPIO_NUM_44},
+    {{&machine_pin_irq_type}, GPIO_NUM_45},
+    {{&machine_pin_irq_type}, GPIO_NUM_46},
+
+    #endif
+
+    #if CONFIG_IDF_TARGET_ESP32S3 && MICROPY_HW_ESP32S3_EXTENDED_IO
+
+    {{&machine_pin_irq_type}, GPIO_NUM_47},
+    {{&machine_pin_irq_type}, GPIO_NUM_48},
+
+    #endif
 };
 
 STATIC mp_obj_t machine_pin_irq_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {

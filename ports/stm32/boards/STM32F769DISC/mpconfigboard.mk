@@ -1,6 +1,3 @@
-# By default this board is configured to use mboot which must be deployed first
-USE_MBOOT ?= 1
-
 # By default the filesystem is in external QSPI flash.  But by setting the
 # following option this board puts some code into external flash set in XIP mode.
 # USE_MBOOT must be enabled; see f769_qspi.ld for code that goes in QSPI flash
@@ -22,7 +19,7 @@ ifeq ($(USE_QSPI_XIP),1)
 LD_FILES = boards/STM32F769DISC/f769_qspi.ld
 TEXT0_ADDR = 0x08020000
 TEXT1_ADDR = 0x90000000
-TEXT0_SECTIONS = .isr_vector .text .data
+TEXT0_SECTIONS = .isr_vector .text .data .ARM
 TEXT1_SECTIONS = .text_qspi
 
 else

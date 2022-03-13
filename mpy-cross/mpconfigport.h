@@ -30,6 +30,14 @@
 #define MICROPY_PERSISTENT_CODE_LOAD (0)
 #define MICROPY_PERSISTENT_CODE_SAVE (1)
 
+#ifndef MICROPY_PERSISTENT_CODE_SAVE_FILE
+#if defined(__i386__) || defined(__x86_64__) || defined(_WIN32) || defined(__unix__) || defined(__APPLE__)
+#define MICROPY_PERSISTENT_CODE_SAVE_FILE (1)
+#else
+#define MICROPY_PERSISTENT_CODE_SAVE_FILE (0)
+#endif
+#endif
+
 #define MICROPY_EMIT_X64            (1)
 #define MICROPY_EMIT_X86            (1)
 #define MICROPY_EMIT_THUMB          (1)
@@ -49,12 +57,12 @@
 #define MICROPY_COMP_TRIPLE_TUPLE_ASSIGN (1)
 #define MICROPY_COMP_RETURN_IF_EXPR (1)
 
-#define MICROPY_OPT_CACHE_MAP_LOOKUP_IN_BYTECODE (0)
-
 #define MICROPY_READER_POSIX        (1)
 #define MICROPY_ENABLE_RUNTIME      (0)
 #define MICROPY_ENABLE_GC           (1)
+#ifndef __EMSCRIPTEN__
 #define MICROPY_STACK_CHECK         (1)
+#endif
 #define MICROPY_HELPER_LEXER_UNIX   (1)
 #define MICROPY_LONGINT_IMPL        (MICROPY_LONGINT_IMPL_MPZ)
 #define MICROPY_ENABLE_SOURCE_LINE  (1)
@@ -66,6 +74,7 @@
 #define MICROPY_CPYTHON_COMPAT      (1)
 #define MICROPY_USE_INTERNAL_PRINTF (0)
 
+#define MICROPY_PY_FSTRINGS         (1)
 #define MICROPY_PY_BUILTINS_STR_UNICODE (1)
 
 #if !(defined(MICROPY_GCREGS_SETJMP) || defined(__x86_64__) || defined(__i386__) || defined(__thumb2__) || defined(__thumb__) || defined(__arm__))
@@ -130,7 +139,7 @@ typedef long mp_off_t;
 #define MP_NOINLINE                 __declspec(noinline)
 #define MP_LIKELY(x)                (x)
 #define MP_UNLIKELY(x)              (x)
-#define MICROPY_PORT_CONSTANTS      { "dummy", 0 }
+#define MICROPY_PORT_CONSTANTS      { MP_ROM_QSTR(MP_QSTR_dummy), MP_ROM_PTR(NULL) }
 #ifdef _WIN64
 #define MP_SSIZE_MAX                _I64_MAX
 #else

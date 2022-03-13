@@ -33,7 +33,7 @@
 #include "py/gc.h"
 #include "py/mphal.h"
 
-#include "lib/utils/pyexec.h"
+#include "shared/runtime/pyexec.h"
 
 #include "gccollect.h"
 #include "systick.h"
@@ -44,7 +44,6 @@
 #include "usrsw.h"
 #include "rng.h"
 #include "uart.h"
-#include "adc.h"
 #include "storage.h"
 #include "sdcard.h"
 #include "accel.h"

@@ -34,8 +34,8 @@
 #if MICROPY_PY_UBINASCII
 
 STATIC mp_obj_t mod_binascii_hexlify(size_t n_args, const mp_obj_t *args) {
-    // Second argument is for an extension to allow a separator to be used
-    // between values.
+    // First argument is the data to convert.
+    // Second argument is an optional separator to be used between values.
     const char *sep = NULL;
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(args[0], &bufinfo, MP_BUFFER_READ);
@@ -165,12 +165,20 @@ STATIC mp_obj_t mod_binascii_a2b_base64(mp_obj_t data) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_binascii_a2b_base64_obj, mod_binascii_a2b_base64);
 
-STATIC mp_obj_t mod_binascii_b2a_base64(mp_obj_t data) {
+STATIC mp_obj_t mod_binascii_b2a_base64(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    enum { ARG_newline };
+    static const mp_arg_t allowed_args[] = {
+        { MP_QSTR_newline, MP_ARG_BOOL, {.u_bool = true} },
+    };
+
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+    uint8_t newline = args[ARG_newline].u_bool;
     mp_buffer_info_t bufinfo;
-    mp_get_buffer_raise(data, &bufinfo, MP_BUFFER_READ);
+    mp_get_buffer_raise(pos_args[0], &bufinfo, MP_BUFFER_READ);
 
     vstr_t vstr;
-    vstr_init_len(&vstr, ((bufinfo.len != 0) ? (((bufinfo.len - 1) / 3) + 1) * 4 : 0) + 1);
+    vstr_init_len(&vstr, ((bufinfo.len != 0) ? (((bufinfo.len - 1) / 3) + 1) * 4 : 0) + newline);
 
     // First pass, we convert input buffer to numeric base 64 values
     byte *in = bufinfo.buf, *out = (byte *)vstr.buf;
@@ -196,7 +204,7 @@ STATIC mp_obj_t mod_binascii_b2a_base64(mp_obj_t data) {
 
     // Second pass, we convert number base 64 values to actual base64 ascii encoding
     out = (byte *)vstr.buf;
-    for (mp_uint_t j = vstr.len - 1; j--;) {
+    for (mp_uint_t j = vstr.len - newline; j--;) {
         if (*out < 26) {
             *out += 'A';
         } else if (*out < 52) {
@@ -212,13 +220,15 @@ STATIC mp_obj_t mod_binascii_b2a_base64(mp_obj_t data) {
         }
         out++;
     }
-    *out = '\n';
+    if (newline) {
+        *out = '\n';
+    }
     return mp_obj_new_str_from_vstr(&mp_type_bytes, &vstr);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_binascii_b2a_base64_obj, mod_binascii_b2a_base64);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_binascii_b2a_base64_obj, 1, mod_binascii_b2a_base64);
 
 #if MICROPY_PY_UBINASCII_CRC32
-#include "uzlib/tinf.h"
+#include "lib/uzlib/tinf.h"
 
 STATIC mp_obj_t mod_binascii_crc32(size_t n_args, const mp_obj_t *args) {
     mp_buffer_info_t bufinfo;

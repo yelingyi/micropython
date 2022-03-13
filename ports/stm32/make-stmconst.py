@@ -17,7 +17,6 @@ if platform.python_version_tuple()[0] == "2":
     def convert_bytes_to_str(b):
         return b
 
-
 elif platform.python_version_tuple()[0] == "3":
 
     def convert_bytes_to_str(b):
@@ -46,7 +45,7 @@ class LexerError(Exception):
 
 class Lexer:
     re_io_reg = r"__IO uint(?P<bits>8|16|32)_t +(?P<reg>[A-Z0-9]+)"
-    re_comment = r"(?P<comment>[A-Za-z0-9 \-/_()&:]+)"
+    re_comment = r"(?P<comment>[A-Za-z0-9 \-/_()&:\[\]]+)"
     re_addr_offset = r"Address offset: (?P<offset>0x[0-9A-Z]{2,3})"
     regexs = (
         (
@@ -65,7 +64,7 @@ class Lexer:
         (
             "#define typedef",
             re.compile(
-                r"#define +(?P<id>[A-Z0-9_]+(ext)?) +\(\([A-Za-z0-9_]+_TypeDef \*\) (?P<id2>[A-Za-z0-9_]+)\)($| +/\*)"
+                r"#define +(?P<id>[A-Z0-9_]+(ext)?) +\(\([A-Za-z0-9_]+_(Global)?TypeDef \*\) (?P<id2>[A-Za-z0-9_]+)\)($| +/\*)"
             ),
         ),
         ("typedef struct", re.compile(r"typedef struct$")),
@@ -282,6 +281,7 @@ def main():
         #'CAN_FIFOMailBox',
         #'CAN_FilterRegister',
         #'CAN',
+        "FDCAN",
         "CRC",
         "DAC",
         "DBGMCU",

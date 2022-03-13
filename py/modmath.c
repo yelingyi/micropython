@@ -204,17 +204,15 @@ MATH_FUN_1(lgamma, lgamma)
 
 #if MICROPY_PY_MATH_ISCLOSE
 STATIC mp_obj_t mp_math_isclose(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    enum { ARG_a, ARG_b, ARG_rel_tol, ARG_abs_tol };
+    enum { ARG_rel_tol, ARG_abs_tol };
     static const mp_arg_t allowed_args[] = {
-        {MP_QSTR_, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL}},
-        {MP_QSTR_, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL}},
         {MP_QSTR_rel_tol, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL}},
         {MP_QSTR_abs_tol, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NEW_SMALL_INT(0)}},
     };
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
-    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
-    const mp_float_t a = mp_obj_get_float(args[ARG_a].u_obj);
-    const mp_float_t b = mp_obj_get_float(args[ARG_b].u_obj);
+    mp_arg_parse_all(n_args - 2, pos_args + 2, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+    const mp_float_t a = mp_obj_get_float(pos_args[0]);
+    const mp_float_t b = mp_obj_get_float(pos_args[1]);
     const mp_float_t rel_tol = args[ARG_rel_tol].u_obj == MP_OBJ_NULL
         ? (mp_float_t)1e-9 : mp_obj_get_float(args[ARG_rel_tol].u_obj);
     const mp_float_t abs_tol = mp_obj_get_float(args[ARG_abs_tol].u_obj);
@@ -373,6 +371,11 @@ STATIC const mp_rom_map_elem_t mp_module_math_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_math) },
     { MP_ROM_QSTR(MP_QSTR_e), mp_const_float_e },
     { MP_ROM_QSTR(MP_QSTR_pi), mp_const_float_pi },
+    #if MICROPY_PY_MATH_CONSTANTS
+    { MP_ROM_QSTR(MP_QSTR_tau), mp_const_float_tau },
+    { MP_ROM_QSTR(MP_QSTR_inf), mp_const_float_inf },
+    { MP_ROM_QSTR(MP_QSTR_nan), mp_const_float_nan },
+    #endif
     { MP_ROM_QSTR(MP_QSTR_sqrt), MP_ROM_PTR(&mp_math_sqrt_obj) },
     { MP_ROM_QSTR(MP_QSTR_pow), MP_ROM_PTR(&mp_math_pow_obj) },
     { MP_ROM_QSTR(MP_QSTR_exp), MP_ROM_PTR(&mp_math_exp_obj) },

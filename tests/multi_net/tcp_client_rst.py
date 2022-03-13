@@ -33,11 +33,12 @@ def instance0():
         print(s2.recv(10))
         print(convert_poll_list(poll.poll(1000)))
     except OSError as er:
-        print(er.args[0])
+        print(er.errno)
     print(convert_poll_list(poll.poll(1000)))
     # TODO lwip raises here but apparently it shouldn't
     print(s2.recv(10))
     print(convert_poll_list(poll.poll(1000)))
+    s2.close()
     s.close()
 
 

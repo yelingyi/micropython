@@ -6,6 +6,7 @@
 #define MICROPY_HW_ENABLE_RNG       (1)
 #define MICROPY_HW_ENABLE_RTC       (1)
 #define MICROPY_HW_ENABLE_USB       (1)
+#define MICROPY_HW_ENABLE_SERVO     (1)
 
 // HSE is 8MHz
 #define MICROPY_HW_CLK_PLLM (8)
@@ -19,14 +20,18 @@
 // UART config
 #define MICROPY_HW_UART1_TX     (pin_A9)
 #define MICROPY_HW_UART1_RX     (pin_A10)
-#define MICROPY_HW_UART2_TX     (pin_D8)
-#define MICROPY_HW_UART2_RX     (pin_D9)
+#define MICROPY_HW_UART2_TX     (pin_D5)
+#define MICROPY_HW_UART2_RX     (pin_D6)
+#define MICROPY_HW_UART3_TX     (pin_C10)
+#define MICROPY_HW_UART3_RX     (pin_C11)
+#define MICROPY_HW_UART6_TX     (pin_C6)
+#define MICROPY_HW_UART6_RX     (pin_C7)
 
-// I2C busses
+// I2C buses
 #define MICROPY_HW_I2C3_SCL (pin_A8)
 #define MICROPY_HW_I2C3_SDA (pin_C9)
 
-// SPI busses
+// SPI buses
 //#define MICROPY_HW_SPI1_NSS     (pin_A4)
 //#define MICROPY_HW_SPI1_SCK     (pin_A5)
 //#define MICROPY_HW_SPI1_MISO    (pin_A6)
@@ -52,7 +57,7 @@
 //#define MICROPY_HW_SPI6_MISO    (pin_G12)
 //#define MICROPY_HW_SPI6_MOSI    (pin_G14)
 
-// CAN busses
+// CAN buses
 #define MICROPY_HW_CAN1_TX (pin_B9)
 #define MICROPY_HW_CAN1_RX (pin_B8)
 #define MICROPY_HW_CAN2_TX (pin_B13)

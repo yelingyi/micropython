@@ -42,6 +42,7 @@
 #include "stm32f4xx_hal_i2c.h"
 #include "stm32f4xx_hal_i2s.h"
 #include "stm32f4xx_hal_iwdg.h"
+#include "stm32f4xx_hal_mmc.h"
 #include "stm32f4xx_hal_pcd.h"
 #include "stm32f4xx_hal_pwr.h"
 #include "stm32f4xx_hal_rcc.h"
@@ -53,7 +54,10 @@
 #include "stm32f4xx_hal_uart.h"
 #include "stm32f4xx_hal_usart.h"
 #include "stm32f4xx_hal_wwdg.h"
+#include "stm32f4xx_ll_adc.h"
+#include "stm32f4xx_ll_pwr.h"
 #include "stm32f4xx_ll_rtc.h"
+#include "stm32f4xx_ll_usart.h"
 
 // Enable various HAL modules
 #define HAL_ADC_MODULE_ENABLED
@@ -71,6 +75,7 @@
 #define HAL_I2C_MODULE_ENABLED
 #define HAL_I2S_MODULE_ENABLED
 #define HAL_IWDG_MODULE_ENABLED
+#define HAL_MMC_MODULE_ENABLED
 #define HAL_PCD_MODULE_ENABLED
 #define HAL_PWR_MODULE_ENABLED
 #define HAL_RCC_MODULE_ENABLED
@@ -85,7 +90,7 @@
 
 // Oscillator values in Hz
 #define HSI_VALUE (16000000)
-#define LSI_VALUE (40000)
+#define LSI_VALUE (32000)
 
 // SysTick has the highest priority
 #define TICK_INT_PRIORITY (0x00)

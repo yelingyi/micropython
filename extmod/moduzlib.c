@@ -33,7 +33,7 @@
 
 #if MICROPY_PY_UZLIB
 
-#include "uzlib/tinf.h"
+#include "lib/uzlib/tinf.h"
 
 #if 0 // print debugging info
 #define DEBUG_printf DEBUG_printf
@@ -77,7 +77,7 @@ STATIC mp_obj_t decompio_make_new(const mp_obj_type_t *type, size_t n_args, size
     o->eof = false;
 
     mp_int_t dict_opt = 0;
-    int dict_sz;
+    uint dict_sz;
     if (n_args > 1) {
         dict_opt = mp_obj_get_int(args[1]);
     }
@@ -94,7 +94,10 @@ STATIC mp_obj_t decompio_make_new(const mp_obj_type_t *type, size_t n_args, size
         header_error:
             mp_raise_ValueError(MP_ERROR_TEXT("compression header"));
         }
-        dict_sz = 1 << dict_opt;
+        // RFC 1950 section 2.2:
+        // CINFO is the base-2 logarithm of the LZ77 window size,
+        // minus eight (CINFO=7 indicates a 32K window size)
+        dict_sz = 1 << (dict_opt + 8);
     } else {
         dict_sz = 1 << -dict_opt;
     }
@@ -116,6 +119,7 @@ STATIC mp_uint_t decompio_read(mp_obj_t o_in, void *buf, mp_uint_t size, int *er
         o->eof = true;
     }
     if (st < 0) {
+        DEBUG_printf("uncompress error=" INT_FMT "\n", st);
         *errcode = MP_EINVAL;
         return MP_STREAM_ERROR;
     }
@@ -201,7 +205,7 @@ STATIC mp_obj_t mod_uzlib_decompress(size_t n_args, const mp_obj_t *args) {
     return res;
 
 error:
-    nlr_raise(mp_obj_new_exception_arg1(&mp_type_ValueError, MP_OBJ_NEW_SMALL_INT(st)));
+    mp_raise_type_arg(&mp_type_ValueError, MP_OBJ_NEW_SMALL_INT(st));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_uzlib_decompress_obj, 1, 3, mod_uzlib_decompress);
 
@@ -223,10 +227,10 @@ const mp_obj_module_t mp_module_uzlib = {
 // Source files #include'd here to make sure they're compiled in
 // only if module is enabled by config setting.
 
-#include "uzlib/tinflate.c"
-#include "uzlib/tinfzlib.c"
-#include "uzlib/tinfgzip.c"
-#include "uzlib/adler32.c"
-#include "uzlib/crc32.c"
+#include "lib/uzlib/tinflate.c"
+#include "lib/uzlib/tinfzlib.c"
+#include "lib/uzlib/tinfgzip.c"
+#include "lib/uzlib/adler32.c"
+#include "lib/uzlib/crc32.c"
 
 #endif // MICROPY_PY_UZLIB

@@ -5,6 +5,8 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
 $(error Invalid BOARD specified)
 endif
 
+BOARD_DIR ?= boards/$(BOARD)
+
 # If SoftDevice is selected, try to use that one.
 SD ?=
 SD_LOWER = $(shell echo $(SD) | tr '[:upper:]' '[:lower:]')
@@ -26,6 +28,13 @@ else
 	include drivers/bluetooth/bluetooth_common.mk
 endif
 
+ifneq ($(BOOTLOADER),)
+	BOOTLOADER_UPPER = $(shell echo $(BOOTLOADER) | tr '[:lower:]' '[:upper:]')
+	# Use additional bootloader linker script
+	LD_FILES += boards/$(MCU_SUB_VARIANT)_$(BOOTLOADER)_$(BOOTLOADER_VERSION_MAJOR).$(BOOTLOADER_VERSION_MINOR).x.ld
+	CFLAGS += -DBOOTLOADER_$(BOOTLOADER_UPPER)_VERSION=$(BOOTLOADER_MAJOR)$(BOOTLOADER_MINOR)
+endif
+
 LD_FILES += boards/memory.ld boards/common.ld
 
 ifneq ($(LD_FILE),)
@@ -42,6 +51,8 @@ QSTR_DEFS = qstrdefsport.h $(BUILD)/pins_qstr.h
 ifeq ($(DEBUG), 0)
 MICROPY_ROM_TEXT_COMPRESSION ?= 1
 endif
+
+FROZEN_MANIFEST ?= modules/manifest.py
 
 # include py core make definitions
 include ../../py/py.mk
@@ -63,7 +74,8 @@ INC += -I./modules/ubluepy
 INC += -I./modules/music
 INC += -I./modules/ble
 INC += -I./modules/board
-INC += -I../../lib/mp-readline
+INC += -I./modules/nrf
+INC += -I../../shared/readline
 INC += -I./drivers/bluetooth
 INC += -I./drivers
 INC += -I../../lib/nrfx/
@@ -122,6 +134,10 @@ LDFLAGS = $(CFLAGS)
 LDFLAGS += -Xlinker -Map=$(@:.elf=.map)
 LDFLAGS += -mthumb -mabi=aapcs $(addprefix -T,$(LD_FILES)) -L boards/
 
+ifneq ($(FS_SIZE),)
+LDFLAGS += -Wl,'--defsym=_fs_size=$(FS_SIZE)'
+endif
+
 #Debugging/Optimization
 ifeq ($(DEBUG), 1)
 #ASMFLAGS += -g -gtabs+
@@ -153,8 +169,16 @@ SRC_LIB += $(addprefix lib/,\
         libm/sf_modf.c \
         libm/sf_ldexp.c \
         libm/asinfacosf.c \
+        libm/acoshf.c \
+        libm/asinhf.c \
         libm/atanf.c \
         libm/atan2f.c \
+        libm/atanhf.c \
+        libm/log1pf.c \
+        libm/sf_erf.c \
+        libm/erf_lgamma.c \
+        libm/wf_lgamma.c \
+        libm/wf_tgamma.c \
         libm/roundf.c \
 	)
 
@@ -179,8 +203,17 @@ SRC_LIB += $(addprefix lib/,\
         libm/sf_modf.c \
         libm/sf_ldexp.c \
         libm/asinfacosf.c \
+        libm/acoshf.c \
+        libm/asinhf.c \
         libm/atanf.c \
         libm/atan2f.c \
+        libm/atanhf.c \
+        libm/log1pf.c \
+        libm/sf_erf.c \
+        libm/erf_lgamma.c \
+        libm/wf_lgamma.c \
+        libm/wf_tgamma.c \
+        libm/roundf.c \
         )
 
 SRC_NRFX += $(addprefix lib/nrfx/drivers/src/,\
@@ -192,12 +225,12 @@ include drivers/secureboot/secureboot.mk
 
 endif
 
-SRC_LIB += $(addprefix lib/,\
+SRC_LIB += $(addprefix shared/,\
 	libc/string0.c \
-	mp-readline/readline.c \
-	utils/pyexec.c \
-	utils/sys_stdio_mphal.c \
-	utils/interrupt_char.c \
+	readline/readline.c \
+	runtime/pyexec.c \
+	runtime/sys_stdio_mphal.c \
+	runtime/interrupt_char.c \
 	timeutils/timeutils.c \
 	)
 
@@ -298,17 +331,14 @@ DRIVERS_SRC_C += $(addprefix modules/,\
 	music/modmusic.c \
 	music/musictunes.c \
 	ble/modble.c \
+	nrf/modnrf.c \
+	nrf/flashbdev.c \
 	)
 
 # Custom micropython startup file with smaller interrupt vector table
 # than the file provided in nrfx.
 SRC_C += \
 	device/startup_$(MCU_SUB_VARIANT).c \
-
-ifneq ($(FROZEN_MPY_DIR),)
-FROZEN_MPY_PY_FILES := $(shell find -L $(FROZEN_MPY_DIR) -type f -name '*.py')
-FROZEN_MPY_MPY_FILES := $(addprefix $(BUILD)/,$(FROZEN_MPY_PY_FILES:.py=.mpy))
-endif
 
 LIBGCC_FILE_NAME = $(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
 LIBS += -L $(dir $(LIBGCC_FILE_NAME)) -lgcc
@@ -395,19 +425,19 @@ else ifeq ($(FLASHER), bmp)
 BMP_PORT ?= /dev/ttyACM0
 
 deploy: $(BUILD)/$(OUTPUT_FILENAME).elf
-	$(Q)$(GDB) \
+	$(Q)$(GDB) -nx --batch \
 	    -ex 'target extended-remote $(BMP_PORT)' \
 	    -ex 'monitor tpwr enable' \
 	    -ex 'monitor swdp_scan' \
 	    -ex 'attach 1' \
 	    -ex 'set mem inaccessible-by-default off' \
 	    -ex 'load' \
+	    -ex 'compare-sections' \
 	    -ex 'kill' \
-	    -ex 'quit' \
 	    $<
 
 sd: $(BUILD)/$(OUTPUT_FILENAME).elf
-	$(Q)$(GDB) \
+	$(Q)$(GDB) -nx --batch \
 	    -ex 'target extended-remote $(BMP_PORT)' \
 	    -ex 'monitor tpwr enable' \
 	    -ex 'monitor swdp_scan' \
@@ -415,10 +445,11 @@ sd: $(BUILD)/$(OUTPUT_FILENAME).elf
 	    -ex 'set mem inaccessible-by-default off' \
 	    -ex 'monitor erase_mass' \
 	    -ex 'load' \
+	    -ex 'compare-sections' \
 	    -ex 'file $(SOFTDEV_HEX)' \
 	    -ex 'load' \
+	    -ex 'compare-sections' \
 	    -ex 'kill' \
-	    -ex 'quit' \
 	    $<
 
 else ifeq ($(FLASHER), openocd)
@@ -439,6 +470,31 @@ deploy: $(BUILD)/$(OUTPUT_FILENAME).hex
 sd: $(BUILD)/$(OUTPUT_FILENAME).hex
 	$(Q)$(OPENOCD) -f interface/cmsis-dap.cfg -f $(OPENOCD_TARGET) -c "init" -c "program $(SOFTDEV_HEX) verify reset" -c "exit"
 
+else ifeq ($(FLASHER), nrfutil)
+
+NRFUTIL_PORT ?= /dev/ttyACM0
+NRFUTIL_SD_REQ ?= 0x00
+
+ifeq ($(SD), s140)
+NRFUTIL_SD_REQ = 0xB6
+endif
+
+.PHONY: nrfutil_dfu_sd nrfutil_dfu_deploy
+.NOTPARALLEL: nrfutil_dfu_sd nrfutil_dfu_deploy
+
+# DFU both SD and app in case of target "sd"
+sd: nrfutil_dfu_sd nrfutil_dfu_deploy
+
+nrfutil_dfu_sd: $(BUILD)/$(OUTPUT_FILENAME).hex
+	$(Q)hexmerge.py -o $(BUILD)/stripped_sd.hex --range=0x1000: $(SOFTDEV_HEX)
+	$(Q)nrfutil pkg generate --hw-version 52 --sd-req 0x00 --sd-id 0x00 --softdevice $(BUILD)/stripped_sd.hex $(BUILD)/stripped_sd.zip
+	$(Q)nrfutil dfu usb-serial -pkg $(BUILD)/stripped_sd.zip -p $(NRFUTIL_PORT) -t 0
+
+nrfutil_dfu_deploy: $(BUILD)/$(OUTPUT_FILENAME).hex
+	$(Q)nrfutil pkg generate --hw-version 52 --sd-req $(NRFUTIL_SD_REQ) --application-version 1 --application $(BUILD)/$(OUTPUT_FILENAME).hex $(BUILD)/$(OUTPUT_FILENAME)_dfu.zip
+	$(Q)nrfutil dfu usb-serial -pkg $(BUILD)/$(OUTPUT_FILENAME)_dfu.zip -p $(NRFUTIL_PORT) -t 0
+
+deploy: nrfutil_dfu_deploy
 endif
 
 flash: deploy
@@ -449,7 +505,7 @@ $(BUILD)/$(OUTPUT_FILENAME).elf: $(OBJ)
 	$(Q)$(SIZE) $@
 
 # List of sources for qstr extraction
-SRC_QSTR += $(SRC_C) $(SRC_LIB) $(DRIVERS_SRC_C) $(SRC_BOARD_MODULES) $(SRC_MOD) 
+SRC_QSTR += $(SRC_C) $(SRC_LIB) $(DRIVERS_SRC_C) $(SRC_BOARD_MODULES) $(SRC_MOD)
 
 # Append any auto-generated sources that are needed by sources listed in
 # SRC_QSTR
@@ -481,17 +537,10 @@ GEN_PINS_QSTR = $(BUILD)/pins_qstr.h
 GEN_PINS_AF_CONST = $(HEADER_BUILD)/pins_af_const.h
 GEN_PINS_AF_PY = $(BUILD)/pins_af.py
 
-ifneq ($(FROZEN_DIR),)
-# To use frozen source modules, put your .py files in a subdirectory (eg scripts/)
-# and then invoke make with FROZEN_DIR=scripts (be sure to build from scratch).
-CFLAGS += -DMICROPY_MODULE_FROZEN_STR
-endif
-
-ifneq ($(FROZEN_MPY_DIR),)
-# To use frozen bytecode, put your .py files in a subdirectory (eg frozen/) and
-# then invoke make with FROZEN_MPY_DIR=frozen (be sure to build from scratch).
+ifneq ($(FROZEN_MANIFEST),)
 CFLAGS += -DMICROPY_QSTR_EXTRA_POOL=mp_qstr_frozen_const_pool
 CFLAGS += -DMICROPY_MODULE_FROZEN_MPY
+CFLAGS += -DMICROPY_MODULE_FROZEN_STR
 endif
 
 $(PY_BUILD)/nlr%.o: CFLAGS += -Os -fno-lto

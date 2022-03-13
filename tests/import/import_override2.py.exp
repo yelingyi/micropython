@@ -10,4 +10,6 @@ mod2
 mod1.foo
 mod2.bar
 import  ('mod1',) 4
-ValueError
+ImportError
+TypeError
+TypeError

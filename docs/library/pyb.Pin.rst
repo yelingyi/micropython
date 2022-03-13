@@ -98,11 +98,11 @@ Class methods
 Methods
 -------
 
-.. method:: Pin.init(mode, pull=Pin.PULL_NONE, af=-1)
+.. method:: Pin.init(mode, pull=Pin.PULL_NONE, *, value=None, alt=-1)
 
    Initialise the pin:
 
-     - ``mode`` can be one of:
+     - *mode* can be one of:
 
         - ``Pin.IN`` - configure the pin for input;
         - ``Pin.OUT_PP`` - configure the pin for output, with push-pull control;
@@ -111,14 +111,17 @@ Methods
         - ``Pin.AF_OD`` - configure the pin for alternate function, open-drain;
         - ``Pin.ANALOG`` - configure the pin for analog.
 
-     - ``pull`` can be one of:
+     - *pull* can be one of:
 
         - ``Pin.PULL_NONE`` - no pull up or down resistors;
         - ``Pin.PULL_UP`` - enable the pull-up resistor;
         - ``Pin.PULL_DOWN`` - enable the pull-down resistor.
 
-     - when mode is ``Pin.AF_PP`` or ``Pin.AF_OD``, then af can be the index or name
-       of one of the alternate functions associated with a pin.
+     - *value* if not None will set the port output value before enabling the pin.
+
+     - *alt* can be used when mode is ``Pin.AF_PP`` or ``Pin.AF_OD`` to set the
+       index or name of one of the alternate functions associated with a pin.
+       This arg was previously called *af* which can still be used if needed.
 
    Returns: ``None``.
 
@@ -234,17 +237,17 @@ pin X3.
 For the pyboard, x3_af would contain:
     [Pin.AF1_TIM2, Pin.AF2_TIM5, Pin.AF3_TIM9, Pin.AF7_USART2]
 
-Normally, each peripheral would configure the af automatically, but sometimes
-the same function is available on multiple pins, and having more control
-is desired.
+Normally, each peripheral would configure the alternate function automatically,
+but sometimes the same function is available on multiple pins, and having more
+control is desired.
 
 To configure X3 to expose TIM2_CH3, you could use::
 
-   pin = pyb.Pin(pyb.Pin.board.X3, mode=pyb.Pin.AF_PP, af=pyb.Pin.AF1_TIM2)
+   pin = pyb.Pin(pyb.Pin.board.X3, mode=pyb.Pin.AF_PP, alt=pyb.Pin.AF1_TIM2)
 
 or::
 
-   pin = pyb.Pin(pyb.Pin.board.X3, mode=pyb.Pin.AF_PP, af=1)
+   pin = pyb.Pin(pyb.Pin.board.X3, mode=pyb.Pin.AF_PP, alt=1)
 
 Methods
 -------

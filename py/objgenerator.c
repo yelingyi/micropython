@@ -65,7 +65,7 @@ STATIC mp_obj_t gen_wrap_call(mp_obj_t self_in, size_t n_args, size_t n_kw, cons
 
     o->pend_exc = mp_const_none;
     o->code_state.fun_bc = self_fun;
-    o->code_state.ip = 0;
+    o->code_state.ip = self_fun->bytecode;
     o->code_state.n_state = n_state;
     mp_setup_code_state(&o->code_state, n_args, n_kw, args);
     return MP_OBJ_FROM_PTR(o);
@@ -91,14 +91,18 @@ STATIC mp_obj_t native_gen_wrap_call(mp_obj_t self_in, size_t n_args, size_t n_k
     // The state for a native generating function is held in the same struct as a bytecode function
     mp_obj_fun_bc_t *self_fun = MP_OBJ_TO_PTR(self_in);
 
-    // Determine start of prelude, and extract n_state from it
+    // Determine start of prelude.
     uintptr_t prelude_offset = ((uintptr_t *)self_fun->bytecode)[0];
     #if MICROPY_EMIT_NATIVE_PRELUDE_AS_BYTES_OBJ
     // Prelude is in bytes object in const_table, at index prelude_offset
-    mp_obj_str_t *prelude_bytes = MP_OBJ_TO_PTR(self_fun->const_table[prelude_offset]);
-    prelude_offset = (const byte *)prelude_bytes->data - self_fun->bytecode;
+    mp_obj_str_t *prelude_bytes = MP_OBJ_TO_PTR(self_fun->context->constants.obj_table[prelude_offset]);
+    const uint8_t *prelude_ptr = prelude_bytes->data;
+    #else
+    const uint8_t *prelude_ptr = self_fun->bytecode + prelude_offset;
     #endif
-    const uint8_t *ip = self_fun->bytecode + prelude_offset;
+
+    // Extract n_state from the prelude.
+    const uint8_t *ip = prelude_ptr;
     size_t n_state, n_exc_stack_unused, scope_flags, n_pos_args, n_kwonly_args, n_def_args;
     MP_BC_PRELUDE_SIG_DECODE_INTO(ip, n_state, n_exc_stack_unused, scope_flags, n_pos_args, n_kwonly_args, n_def_args);
     size_t n_exc_stack = 0;
@@ -111,7 +115,7 @@ STATIC mp_obj_t native_gen_wrap_call(mp_obj_t self_in, size_t n_args, size_t n_k
     // Parse the input arguments and set up the code state
     o->pend_exc = mp_const_none;
     o->code_state.fun_bc = self_fun;
-    o->code_state.ip = (const byte *)prelude_offset;
+    o->code_state.ip = prelude_ptr;
     o->code_state.n_state = n_state;
     mp_setup_code_state(&o->code_state, n_args, n_kw, args);
 
@@ -152,8 +156,9 @@ mp_vm_return_kind_t mp_obj_gen_resume(mp_obj_t self_in, mp_obj_t send_value, mp_
     mp_check_self(mp_obj_is_type(self_in, &mp_type_gen_instance));
     mp_obj_gen_instance_t *self = MP_OBJ_TO_PTR(self_in);
     if (self->code_state.ip == 0) {
-        // Trying to resume already stopped generator
-        *ret_val = MP_OBJ_STOP_ITERATION;
+        // Trying to resume an already stopped generator.
+        // This is an optimised "raise StopIteration(None)".
+        *ret_val = mp_const_none;
         return MP_VM_RETURN_NORMAL;
     }
 
@@ -183,7 +188,7 @@ mp_vm_return_kind_t mp_obj_gen_resume(mp_obj_t self_in, mp_obj_t send_value, mp_
 
     // Set up the correct globals context for the generator and execute it
     self->code_state.old_globals = mp_globals_get();
-    mp_globals_set(self->code_state.fun_bc->globals);
+    mp_globals_set(self->code_state.fun_bc->context->module.globals);
 
     mp_vm_return_kind_t ret_kind;
 
@@ -212,6 +217,7 @@ mp_vm_return_kind_t mp_obj_gen_resume(mp_obj_t self_in, mp_obj_t send_value, mp_
             // subsequent next() may re-execute statements after last yield
             // again and again, leading to side effects.
             self->code_state.ip = 0;
+            // This is an optimised "raise StopIteration(*ret_val)".
             *ret_val = *self->code_state.sp;
             break;
 
@@ -236,16 +242,20 @@ mp_vm_return_kind_t mp_obj_gen_resume(mp_obj_t self_in, mp_obj_t send_value, mp_
     return ret_kind;
 }
 
-STATIC mp_obj_t gen_resume_and_raise(mp_obj_t self_in, mp_obj_t send_value, mp_obj_t throw_value) {
+STATIC mp_obj_t gen_resume_and_raise(mp_obj_t self_in, mp_obj_t send_value, mp_obj_t throw_value, bool raise_stop_iteration) {
     mp_obj_t ret;
     switch (mp_obj_gen_resume(self_in, send_value, throw_value, &ret)) {
         case MP_VM_RETURN_NORMAL:
         default:
-            // Optimize return w/o value in case generator is used in for loop
-            if (ret == mp_const_none || ret == MP_OBJ_STOP_ITERATION) {
-                return MP_OBJ_STOP_ITERATION;
+            // A normal return is a StopIteration, either raise it or return
+            // MP_OBJ_STOP_ITERATION as an optimisation.
+            if (ret == mp_const_none) {
+                ret = MP_OBJ_NULL;
+            }
+            if (raise_stop_iteration) {
+                mp_raise_StopIteration(ret);
             } else {
-                nlr_raise(mp_obj_new_exception_arg1(&mp_type_StopIteration, ret));
+                return mp_make_stop_iteration(ret);
             }
 
         case MP_VM_RETURN_YIELD:
@@ -257,16 +267,11 @@ STATIC mp_obj_t gen_resume_and_raise(mp_obj_t self_in, mp_obj_t send_value, mp_o
 }
 
 STATIC mp_obj_t gen_instance_iternext(mp_obj_t self_in) {
-    return gen_resume_and_raise(self_in, mp_const_none, MP_OBJ_NULL);
+    return gen_resume_and_raise(self_in, mp_const_none, MP_OBJ_NULL, false);
 }
 
 STATIC mp_obj_t gen_instance_send(mp_obj_t self_in, mp_obj_t send_value) {
-    mp_obj_t ret = gen_resume_and_raise(self_in, send_value, MP_OBJ_NULL);
-    if (ret == MP_OBJ_STOP_ITERATION) {
-        mp_raise_type(&mp_type_StopIteration);
-    } else {
-        return ret;
-    }
+    return gen_resume_and_raise(self_in, send_value, MP_OBJ_NULL, true);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(gen_instance_send_obj, gen_instance_send);
 
@@ -288,12 +293,7 @@ STATIC mp_obj_t gen_instance_throw(size_t n_args, const mp_obj_t *args) {
         exc = args[2];
     }
 
-    mp_obj_t ret = gen_resume_and_raise(args[0], mp_const_none, exc);
-    if (ret == MP_OBJ_STOP_ITERATION) {
-        mp_raise_type(&mp_type_StopIteration);
-    } else {
-        return ret;
-    }
+    return gen_resume_and_raise(args[0], mp_const_none, exc, true);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(gen_instance_throw_obj, 2, 4, gen_instance_throw);
 
