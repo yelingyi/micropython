@@ -149,6 +149,9 @@
 #define MICROPY_PY_URANDOM          (1)
 #define MICROPY_PY_MACHINE          (1)
 #define MICROPY_PY_MACHINE_PULSE    (1)
+#ifndef MICROPY_PY_THREAD
+#define MICROPY_PY_THREAD           (1)
+#endif
 #define MICROPY_MACHINE_MEM_GET_READ_ADDR   mod_machine_mem_get_addr
 #define MICROPY_MACHINE_MEM_GET_WRITE_ADDR  mod_machine_mem_get_addr
 
@@ -225,6 +228,11 @@ extern const struct _mp_obj_module_t mp_module_time;
 #endif
 
 #define MP_STATE_PORT               MP_STATE_VM
+
+#if MICROPY_PY_THREAD
+#define MICROPY_BEGIN_ATOMIC_SECTION() (mp_thread_windows_begin_atomic_section(), 0xffffffff)
+#define MICROPY_END_ATOMIC_SECTION(x) (void)x; mp_thread_windows_end_atomic_section()
+#endif
 
 #define MICROPY_MPHALPORT_H         "windows_mphal.h"
 

@@ -27,6 +27,7 @@
 #include <windows.h>
 #include <errno.h>
 #include <limits.h>
+#include "sleep.h"
 
 HANDLE waitTimer = NULL;
 
@@ -41,36 +42,32 @@ void deinit_sleep(void) {
     }
 }
 
-int usleep_impl(__int64 usec) {
+void mp_hal_delay_us(mp_uint_t usec) {
+    // This sleep function can be interrupted by APC function if
+    // needed(used in mp_thread_gc)
     if (waitTimer == NULL) {
         errno = EAGAIN;
-        return -1;
+        return;
     }
     if (usec < 0 || usec > LLONG_MAX / 10) {
         errno = EINVAL;
-        return -1;
+        return;
     }
 
     LARGE_INTEGER ft;
     ft.QuadPart = -10 * usec; // 100 nanosecond interval, negative value = relative time
     if (SetWaitableTimer(waitTimer, &ft, 0, NULL, NULL, 0) == 0) {
         errno = EINVAL;
-        return -1;
+        return;
     }
-    if (WaitForSingleObject(waitTimer, INFINITE) != WAIT_OBJECT_0) {
+    if (WaitForSingleObjectEx(waitTimer, INFINITE, TRUE) != WAIT_OBJECT_0) {
         errno = EAGAIN;
-        return -1;
+        return;
     }
-    return 0;
+    return;
 }
-
-#ifdef _MSC_VER // mingw and the likes provide their own usleep()
-int usleep(__int64 usec) {
-    return usleep_impl(usec);
-}
-#endif
 
 void msec_sleep(double msec) {
     const double usec = msec * 1000.0;
-    usleep_impl(usec > (double)LLONG_MAX ? LLONG_MAX : (__int64)usec);
+    mp_hal_delay_us(usec > (double)LLONG_MAX ? LLONG_MAX : (__int64)usec);
 }

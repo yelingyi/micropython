@@ -64,9 +64,11 @@ static inline int mp_hal_readline(vstr_t *vstr, const char *p) {
 
 #endif
 
+#ifndef _WIN32
 static inline void mp_hal_delay_us(mp_uint_t us) {
     usleep(us);
 }
+#endif
 #define mp_hal_ticks_cpu() 0
 
 // This macro is used to implement PEP 475 to retry specified syscalls on EINTR

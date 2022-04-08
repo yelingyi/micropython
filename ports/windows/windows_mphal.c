@@ -270,6 +270,7 @@ void mp_hal_delay_ms(mp_uint_t ms) {
         MICROPY_EVENT_POLL_HOOK
     }
     #else
+    // Alertable = TRUE means that APC functions (used in mpthreadport) can be called during sleep.
     SleepEx(ms, TRUE);
     #endif
 }

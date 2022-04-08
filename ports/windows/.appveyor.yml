@@ -53,7 +53,7 @@ test_script:
       & $env:MICROPY_CPYTHON3 run-tests.py --print-failures
       throw "Test failure"
     }
-    & $env:MICROPY_CPYTHON3 run-tests.py --via-mpy -d basics float micropython
+    & $env:MICROPY_CPYTHON3 run-tests.py --via-mpy -d basics float micropython thread
     if ($LASTEXITCODE -ne 0) {
       & $env:MICROPY_CPYTHON3 run-tests.py --print-failures
       throw "Test failure"
