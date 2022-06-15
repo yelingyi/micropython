@@ -390,10 +390,16 @@ target_compile_definitions(${MICROPY_TARGET} PRIVATE
     MICROPY_BUILD_TYPE="${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION} ${CMAKE_BUILD_TYPE}"
     PICO_NO_BI_STDIO_UART=1 # we call it UART REPL
     PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1
+    MICROPY_HW_FLASH_SIZE_BYTES=${MICROPY_HW_FLASH_SIZE_BYTES}
+    MICROPY_HW_APP_SIZE_BYTES=${MICROPY_HW_APP_SIZE_BYTES}
 )
 
 target_link_libraries(${MICROPY_TARGET}
     ${PICO_SDK_COMPONENTS}
+)
+
+target_link_options(${MICROPY_TARGET} PRIVATE
+    -Wl,--print-memory-usage
 )
 
 if (MICROPY_HW_ENABLE_DOUBLE_TAP)
@@ -403,12 +409,16 @@ target_link_libraries(${MICROPY_TARGET}
 )
 endif()
 
+# parse the linker file, replacing ${MICROPY_HW_FLASH_SIZE_BYTES}, etc with their values
+configure_file(${CMAKE_CURRENT_LIST_DIR}/memmap_mp.ld.in ${CMAKE_CURRENT_BINARY_DIR}/memmap_mp.ld)
+
 # todo this is a bit brittle, but we want to move a few source files into RAM (which requires
 #  a linker script modification) until we explicitly add  macro calls around the function
 #  defs to move them into RAM.
 if (PICO_ON_DEVICE AND NOT PICO_NO_FLASH AND NOT PICO_COPY_TO_RAM)
-    pico_set_linker_script(${MICROPY_TARGET} ${CMAKE_CURRENT_LIST_DIR}/memmap_mp.ld)
+    pico_set_linker_script(${MICROPY_TARGET} ${CMAKE_CURRENT_BINARY_DIR}/memmap_mp.ld)
 endif()
+
 
 pico_add_extra_outputs(${MICROPY_TARGET})
 
