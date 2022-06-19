@@ -51,6 +51,7 @@ typedef struct _mp_obj_frame_t {
     mp_uint_t lasti;
     mp_uint_t lineno;
     bool trace_opcodes;
+    mp_obj_t trace_obj;
 } mp_obj_frame_t;
 
 void mp_prof_extract_prelude(const byte *bytecode, mp_bytecode_prelude_t *prelude);

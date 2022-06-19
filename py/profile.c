@@ -238,17 +238,29 @@ STATIC void frame_print(const mp_print_t *print, mp_obj_t o_in, mp_print_kind_t 
 }
 
 STATIC void frame_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
-    if (dest[0] != MP_OBJ_NULL) {
+    mp_obj_frame_t *o = MP_OBJ_TO_PTR(self_in);
+
+    if (dest[0] == MP_OBJ_SENTINEL) {
+        // store attr
+        switch (attr) {
+            case MP_QSTR_f_trace:
+                o->trace_obj = dest[1];
+                dest[0] = MP_OBJ_NULL;
+                break;
+        }
+        return;
+    } else if (dest[0] != MP_OBJ_NULL) {
         // not load attribute
         return;
     }
-
-    mp_obj_frame_t *o = MP_OBJ_TO_PTR(self_in);
 
     switch (attr) {
         case MP_QSTR_f_back:
             dest[0] = mp_const_none;
             if (o->code_state->prev_state) {
+                if (!o->code_state->prev_state->frame) {
+                    o->code_state->prev_state->frame = MP_OBJ_TO_PTR(mp_obj_new_frame(o->code_state->prev_state));
+                }
                 dest[0] = MP_OBJ_FROM_PTR(o->code_state->prev_state->frame);
             }
             break;
@@ -263,6 +275,9 @@ STATIC void frame_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
             break;
         case MP_QSTR_f_lineno:
             dest[0] = MP_OBJ_NEW_SMALL_INT(o->lineno);
+            break;
+        case MP_QSTR_f_trace:
+            dest[0] = o->trace_obj;
             break;
     }
 }
@@ -300,6 +315,7 @@ mp_obj_t mp_obj_new_frame(const mp_code_state_t *code_state) {
     o->lineno = mp_prof_bytecode_lineno(rc, o->lasti);
     o->trace_opcodes = false;
     o->callback = MP_OBJ_NULL;
+    o->trace_obj = MP_OBJ_NULL;
 
     return MP_OBJ_FROM_PTR(o);
 }
