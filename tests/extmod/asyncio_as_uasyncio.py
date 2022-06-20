@@ -6,7 +6,7 @@ except ImportError:
     raise SystemExit
 
 x = set(dir(uasyncio))
-y = set(dir(asyncio)) - set(["event", "lock", "stream", "funcs"])
+y = set(dir(asyncio)) - set(["event", "lock", "stream", "funcs", "taskgroup"])
 
 print(x - y)
 print(y - x)

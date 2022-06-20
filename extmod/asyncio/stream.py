@@ -17,7 +17,8 @@ class Stream:
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        await self.close()
+        self.s.close()
+        pass
 
     def close(self):
         pass
@@ -152,7 +153,7 @@ class Server:
 
 
 # Helper function to start a TCP stream server, running as a new task
-# TODO could use an accept-callback on socket read activity instead of creating a task
+# DOES NOT USE TASKGROUPS. Use run_server instead
 async def start_server(cb, host, port, backlog=5):
     import socket
 
@@ -168,6 +169,47 @@ async def start_server(cb, host, port, backlog=5):
     srv = Server()
     srv.task = core.create_task(srv._serve(s, cb))
     return srv
+
+
+# Helper task to run a TCP stream server.
+# Callbacks (i.e. connection handlers) may run in a different taskgroup.
+async def run_server(cb, host, port, backlog=5, taskgroup=None):
+    import socket
+
+    # Create and bind server socket.
+    host = socket.getaddrinfo(host, port)[0]  # TODO this is blocking!
+    s = socket.socket()
+    s.setblocking(False)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(host[-1])
+    s.listen(backlog)
+
+    if taskgroup is None:
+        from . import TaskGroup
+
+        async with TaskGroup() as tg:
+            await _run_server(tg, s, cb)
+    else:
+        await _run_server(taskgroup, s, cb)
+
+
+async def _run_server(tg, s, cb):
+    while True:
+        try:
+            yield core._io_queue.queue_read(s)
+        except core.CancelledError:
+            # Shutdown server
+            s.close()
+            return
+        try:
+            s2, addr = s.accept()
+        except Exception:
+            # Ignore a failed accept
+            continue
+
+        s2.setblocking(False)
+        s2s = Stream(s2, {"peername": addr})
+        tg.create_task(cb(s2s, s2s))
 
 
 ################################################################################
