@@ -279,6 +279,9 @@ STATIC void frame_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
         case MP_QSTR_f_trace:
             dest[0] = o->trace_obj;
             break;
+        case MP_QSTR_f_locals:
+            dest[0] = MP_OBJ_FROM_PTR(o->code->dict_locals);
+            break;
     }
 }
 
