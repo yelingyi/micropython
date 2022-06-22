@@ -355,6 +355,13 @@ mp_obj_t mp_prof_settrace(mp_obj_t callback) {
     return mp_const_none;
 }
 
+mp_obj_t mp_prof_gettrace() {
+    if (prof_trace_cb == MP_OBJ_NULL) {
+        return mp_const_none;
+    }
+    return prof_trace_cb;
+}
+
 mp_obj_t mp_prof_get_frame(int depth) {
 
     mp_code_state_t *code_state = MP_STATE_THREAD(current_code_state);
