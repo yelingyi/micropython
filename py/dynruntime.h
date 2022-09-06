@@ -87,6 +87,7 @@ static inline void *m_realloc_dyn(void *ptr, size_t new_num_bytes) {
 #define mp_type_int                         (*(mp_obj_type_t *)(mp_load_global(MP_QSTR_int)))
 #define mp_type_str                         (*mp_fun_table.type_str)
 #define mp_type_bytes                       (*(mp_obj_type_t *)(mp_load_global(MP_QSTR_bytes)))
+#define mp_type_bytearray                   (*(mp_obj_type_t *)(mp_load_global(MP_QSTR_bytearray)))
 #define mp_type_tuple                       (*((mp_obj_base_t *)mp_const_empty_tuple)->type)
 #define mp_type_list                        (*mp_fun_table.type_list)
 #define mp_type_EOFError                    (*(mp_obj_type_t *)(mp_load_global(MP_QSTR_EOFError)))
