@@ -38,6 +38,7 @@
 #include "modmachine.h"
 #include "fsl_clock.h"
 #include "fsl_wdog.h"
+#include "mboot/shared/mboot_command.h"
 
 #if MICROPY_PY_MACHINE
 
@@ -50,6 +51,14 @@ typedef enum {
     MP_DEEPSLEEP_RESET,
     MP_SOFT_RESET
 } reset_reason_t;
+
+__attribute__((section("._bl_command"))) mboot_command_t bl_command;
+
+void reset_boot(void) {
+    bl_command.magic = BOOT_COMMAND_MAGIC;
+    bl_command.command = BOOT_COMMAND_RESET_DFU;
+    NVIC_SystemReset();
+}
 
 STATIC mp_obj_t machine_unique_id(void) {
     unsigned char id[8];
@@ -84,6 +93,12 @@ STATIC mp_obj_t machine_reset_cause(void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_reset_cause_obj, machine_reset_cause);
 
+STATIC mp_obj_t machine_bootloader(void) {
+    reset_boot();
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_bootloader_obj, machine_bootloader);
+
 STATIC mp_obj_t machine_freq(void) {
     return MP_OBJ_NEW_SMALL_INT(mp_hal_get_cpu_freq());
 }
@@ -114,6 +129,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_soft_reset),          MP_ROM_PTR(&machine_soft_reset_obj) },
     { MP_ROM_QSTR(MP_QSTR_reset),               MP_ROM_PTR(&machine_reset_obj) },
     { MP_ROM_QSTR(MP_QSTR_reset_cause),         MP_ROM_PTR(&machine_reset_cause_obj) },
+    { MP_ROM_QSTR(MP_QSTR_bootloader),          MP_ROM_PTR(&machine_bootloader_obj) },
     { MP_ROM_QSTR(MP_QSTR_freq),                MP_ROM_PTR(&machine_freq_obj) },
     { MP_ROM_QSTR(MP_QSTR_mem8),                MP_ROM_PTR(&machine_mem8_obj) },
     { MP_ROM_QSTR(MP_QSTR_mem16),               MP_ROM_PTR(&machine_mem16_obj) },

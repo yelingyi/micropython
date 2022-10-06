@@ -51,13 +51,13 @@ Reset_Handler:
 /*     Loop to copy data from read only memory to RAM. The ranges
  *      of copy from/to are specified by following symbols evaluated in
  *      linker script.
- *      __etext: End of code section, i.e., begin of data sections to copy from.
+ *      __DATA_ROM: End of code section, i.e., begin of data sections to copy from.
  *      __data_start__/__data_end__: RAM address range that data should be
  *      __noncachedata_start__/__noncachedata_end__ : none cachable region
  *      __ram_function_start__/__ram_function_end__ : ramfunction region
  *      copied to. Both must be aligned to 4 bytes boundary.  */
 
-    ldr    r1, =__etext
+    ldr    r1, =__DATA_ROM
     ldr    r2, =__data_start__
     ldr    r3, =__data_end__
 

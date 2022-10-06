@@ -1,7 +1,7 @@
 /*
 ** ###################################################################
 ** Linker script inspired by NXP linker script for MIMXRT10xx
-** 
+**
 ** Copyright for original linker script:
 **     Copyright 2016 Freescale Semiconductor, Inc.
 **     Copyright 2016-2018 NXP
@@ -19,33 +19,87 @@
 ** ###################################################################
 */
 
+#include BOARD_LINKER_SCRIPT_H
+
 /* Entry Point */
 ENTRY(Reset_Handler)
+
+
+#if defined MICROPY_HW_FLASH_RESERVED
+  /* Reserved Area
+   * Users can create a reserved area at the end of the flash memory via
+   * 'reserved_size' variable. The size of the reserved area should be a multiple
+   * of the sector size of the flash memory!
+   */
+  reserved_size = MICROPY_HW_FLASH_RESERVED;
+  flash_end = flash_start + (flash_size - reserved_size);
+#else
+  reserved_size = 0;
+  flash_end = flash_start + flash_size;
+#endif
+
+/* Flash configuration is physically used only in non-bootloader builds.
+ *  For bootloader builds this section will be NOLOAD since information is already present in flash memory through bootloader binary.
+ */
+flash_config_start      = DEFINED(flash_config_start) ? flash_config_start : flash_start;
+flash_config_size       = DEFINED(flash_config_size)  ? flash_config_size  : 0x00001000;
+
+mboot_start    = flash_config_start;
+#if MICROPY_HW_FLASH_TYPE == qspi_nor_flash
+  mboot_size     = MICROPY_HW_FLASH_FIRMWARE_START_ADDR - (flash_config_start - flash_start);
+#elif MICROPY_HW_FLASH_TYPE == qspi_hyper_flash
+  mboot_size     = MICROPY_HW_FLASH_FIRMWARE_START_ADDR - (flash_config_start - flash_start);
+#else
+  #error Unknown MICROPY_HW_FLASH_TYPE
+#endif
+firmware_start      = mboot_start + mboot_size;
+firmware_size       = flash_end - firmware_start;
+
+ivt_start           = flash_config_start + flash_config_size;
+ivt_size            = 0x00001000;
+fw_header_start     = firmware_start;
+fw_header_size      = 0x00000400;
+interrupts_start    = (fw_header_start + fw_header_size);
+
+interrupts_size         = 0x00000400;
+text_start              = (interrupts_start + interrupts_size);
+
+/* VFS starts at fixed offset of 0x0010'0000 from flash_start */
+vfs_start               = DEFINED(vfs_start) ? vfs_start : flash_start + 0x00100000;
+text_size               = ((vfs_start) - (text_start));
+vfs_size                = flash_end - vfs_start;
+
+_estack = __StackTop;
+_sstack = __StackLimit;
+
+#if MICROPY_HW_SDRAM_AVAIL
+_gc_heap_start = ORIGIN(m_sdram);
+_gc_heap_end = ORIGIN(m_sdram) + LENGTH(m_sdram);
+#else
+/* Use second OCRAM bank for GC heap. */
+_gc_heap_start = ORIGIN(m_ocrm);
+_gc_heap_end = ORIGIN(m_ocrm) + LENGTH(m_ocrm);
+#endif
+
 
 HEAP_SIZE  = DEFINED(__heap_size__)  ? __heap_size__  : 0x0400;
 STACK_SIZE = DEFINED(__stack_size__) ? __stack_size__ : 0x0400;
 
-/* Reserved Area
- * Users can create a reserved area at the end of the flash memory via 
- * 'reserved_size' variable. The size of the reserved area should be a multiple
- * of the sector size of the flash memory!
- */
-reserved_size = DEFINED(reserved_size) ? reserved_size : 0k;
 
 /* Specify the memory areas */
 MEMORY
 {
-  m_flash_config (RX) : ORIGIN = flash_config_start,    LENGTH = flash_config_size
-  m_ivt          (RX) : ORIGIN = ivt_start,             LENGTH = ivt_size
+  m_mboot        (RX) : ORIGIN = flash_config_start,    LENGTH = mboot_size
+  /* --- */
+  m_fw_header    (RX) : ORIGIN = fw_header_start,       LENGTH = fw_header_size
   m_interrupts   (RX) : ORIGIN = interrupts_start,      LENGTH = interrupts_size
   m_text         (RX) : ORIGIN = text_start,            LENGTH = text_size
   m_vfs          (RX) : ORIGIN = vfs_start,             LENGTH = vfs_size
   /* Teensy uses the last bit of flash for recovery. */
-  m_reserved     (RX) : ORIGIN = (vfs_start + vfs_size), LENGTH = reserved_size  
+  m_reserved     (RX) : ORIGIN = (vfs_start + vfs_size), LENGTH = reserved_size
   m_itcm         (RX) : ORIGIN = itcm_start,            LENGTH = itcm_size
   m_dtcm         (RW) : ORIGIN = dtcm_start,            LENGTH = dtcm_size
   m_ocrm         (RW) : ORIGIN = ocrm_start,            LENGTH = ocrm_size
-
   #if MICROPY_HW_SDRAM_AVAIL
   m_sdram        (RX) : ORIGIN = sdram_start,           LENGTH = sdram_size
   #endif
@@ -55,30 +109,35 @@ MEMORY
 SECTIONS
 {
   __flash_start = flash_start;
+  __vfs_start = ORIGIN(m_vfs);
+  __vfs_end = __vfs_start + LENGTH(m_vfs);
   #if MICROPY_HW_SDRAM_AVAIL
   __sdram_start = sdram_start;
   #endif
-  __vfs_start = ORIGIN(m_vfs);
-  __vfs_end = __vfs_start + LENGTH(m_vfs);  
-  
-  .flash_config :
+
+  .mboot :
   {
+    FILL(0x00);
     . = ALIGN(4);
     __FLASH_BASE = .;
     KEEP(* (.boot_hdr.conf))     /* flash config section */
-    . = ALIGN(4);
-  } > m_flash_config
-
-  ivt_begin = ORIGIN(m_flash_config) + LENGTH(m_flash_config);
-
-  .ivt : AT(ivt_begin)
-  {
-    . = ALIGN(4);
+    . = ORIGIN(m_mboot) + flash_config_size;
     KEEP(* (.boot_hdr.ivt))           /* ivt section */
     KEEP(* (.boot_hdr.boot_data))     /* boot section */
     KEEP(* (.boot_hdr.dcd_data))      /* dcd section */
+    . = ORIGIN(m_mboot) + LENGTH(m_mboot) - 1;
+    BYTE(0x00)
+  } > m_mboot
+
+  . = ORIGIN(m_fw_header);
+  .fw_header :
+  {
+    FILL(0x00);
     . = ALIGN(4);
-  } > m_ivt
+    KEEP(* (.fw_header))
+    . = ORIGIN(m_fw_header) + LENGTH(m_fw_header) - 1;
+    BYTE(0x00)
+  } > m_fw_header
 
   /* The startup code goes first into internal RAM */
   .interrupts :
@@ -176,8 +235,17 @@ SECTIONS
     KEEP (*(.fini_array*))
     PROVIDE_HIDDEN (__fini_array_end = .);
   } > m_text
-  
+
   __etext = .;    /* define a global symbol at end of code */
+
+  .no_init : AT(__etext)
+  {
+    __no_init_ram_begin = .;
+    KEEP(*(._bl_command*))
+    __no_init_ram_end = .;
+  } > m_dtcm
+
+  . = __etext + (__no_init_ram_end - __no_init_ram_begin);
   __DATA_ROM = .; /* Symbol is used by startup for data initialization */
 
   .data : AT(__DATA_ROM)
@@ -205,7 +273,7 @@ SECTIONS
     *(.text*)
     . = ALIGN(4);
     __ram_function_end__ = .;
-  } > m_itcm  
+  } > m_itcm
 
   __NDATA_ROM = __RAM_FUNCTIONS_ROM + (__ram_function_end__ - __ram_function_start__);
   .ncache.init : AT(__NDATA_ROM)
