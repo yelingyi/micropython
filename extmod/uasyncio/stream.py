@@ -185,8 +185,17 @@ async def run_server(cb, host, port, backlog=5, taskgroup=None):
     s.listen(backlog)
 
     if taskgroup is None:
-        async with TaskGroup() as tg:
+        # async with TaskGroup() as tg:
+        ## does not yet work natively
+        _tg = TaskGroup()
+        tg = await _tg.__aenter__()
+        try:
             await _run_server(tg, s, cb)
+        except BaseException as exc:
+            if not await _tg.__aexit__(type(exc), exc, None):
+                raise exc
+        else:
+            await _tg.__aexit__(None, None, None)
     else:
         await _run_server(taskgroup, s, cb)
 
