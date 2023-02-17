@@ -1,0 +1,76 @@
+--- 01
+T1 42
+T2 11
+--- 02
+T1 42
+T2 11
+--- 03
+T1 0
+T2 11
+--- 04
+ZeroDivision
+NUM 0
+T2C True
+--- 05
+ZeroDivision
+NUM 0
+T2 True
+RUN True
+--- 06
+D False
+CANCEL
+NUM 5
+--- 07
+D False
+CANCEL
+NUM 15
+--- 08
+D False
+CANCEL
+--- 09
+ZDE
+T1 0
+T2 0
+--- 10
+XX1
+ZDE
+T1 0
+T2 0
+--- 11
+D False
+CANCEL
+--- 12
+R False
+CANCEL
+--- 13
+E1
+CANC
+--- 14
+VAL
+--- 15
+R False
+CANCEL
+--- 16
+R False
+CANCEL
+--- 17
+R False
+CANCEL
+NUM 10
+--- 18
+R False
+EXC
+NUM 10
+--- 19
+EXC OK
+--- 20
+KBD
+--- 21
+KBD
+--- 22
+Cancelled
+T1 0
+T2 0
+--- 23
+END 0
+--- END
