@@ -6,12 +6,14 @@ from . import event
 from . import task
 
 _DEBUG = const(False)
+_s_new = const(0)
+_s_entered = const(1)
+_s_exiting = const(2)
+_s_aborting = const(3)
 
 class TaskGroup:
     def __init__(self):
-        self._entered = False
-        self._exiting = False
-        self._aborting = False
+        self._state = _s_new
         self._loop = None
         self._parent_task = None
         self._parent_cancel_requested = False
@@ -27,18 +29,18 @@ class TaskGroup:
                 info.append("tasks=" + str(len(self._tasks)))
             if self._errors:
                 info.append("errors={}" + str(len(self._errors)))
-            if self._aborting:
+            if self._state == _s_aborting:
                 info.append("cancelling")
-            elif self._entered:
+            elif self._state > _s_new:
                 info.append("entered")
             return "<TaskGroup{}>".format(" ".join(info))
         else:
             return "<TaskGroup>"
 
     async def __aenter__(self):
-        if self._entered:
+        if self._state != _s_new:
             raise RuntimeError("TaskGroup has been already entered")
-        self._entered = True
+        self._state = _s_entered
 
         if self._loop is None:
             self._loop = core.get_event_loop()
@@ -50,7 +52,8 @@ class TaskGroup:
         return self
 
     async def __aexit__(self, et, exc, tb):
-        self._exiting = True
+        if self._state == _s_entered:
+            self._state = _s_exiting
         propagate_cancellation_error = None
 
         if exc is not None and self._is_base_error(exc) and self._base_error is None:
@@ -65,7 +68,7 @@ class TaskGroup:
                 # else:
                 propagate_cancellation_error = exc
 
-            if not self._aborting:
+            if self._state < _s_aborting:
                 # Our parent task is being cancelled:
                 #
                 #    async with TaskGroup() as g:
@@ -91,7 +94,7 @@ class TaskGroup:
             try:
                 await self._on_completed.wait()
             except core.CancelledError as ex:
-                if not self._aborting:
+                if self._state < _s_aborting:
                     # Our parent task is being cancelled:
                     #
                     #    async def wrapper():
@@ -138,9 +141,9 @@ class TaskGroup:
             raise me
 
     def create_task(self, coro):
-        if not self._entered:
+        if self._state == _s_new:
             raise RuntimeError("TaskGroup has not been entered")
-        if self._exiting and not self._tasks:
+        if self._state == _s_aborting and not self._tasks:
             raise RuntimeError("TaskGroup is finished")
 
         k = [None]
@@ -167,7 +170,7 @@ class TaskGroup:
         return isinstance(exc, (SystemExit, KeyboardInterrupt))
 
     def _abort(self):
-        self._aborting = True
+        self._state = _s_aborting
 
         for t in self._tasks:
             if not t.done():
@@ -217,7 +220,7 @@ class TaskGroup:
             )
             return
 
-        if not self._aborting and not self._parent_cancel_requested:
+        if self._state< _s_aborting and not self._parent_cancel_requested:
             # If parent task *is not* being cancelled, it means that we want
             # to manually cancel it to abort whatever is being run right now
             # in the TaskGroup.  But we want to mark parent task as
