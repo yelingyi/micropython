@@ -17,6 +17,7 @@ class TaskGroup:
         self._parent_task = None
         self._parent_cancel_requested = False
         self._tasks = set()
+        self._pending = set()
         self._errors = []
         self._base_error = None
         self._on_completed = None
@@ -82,6 +83,11 @@ class TaskGroup:
                 #
                 self._abort()
 
+            # Tasks that didn't yet enter our _run_task wrapper
+            # get cancelled off immediately
+            for task in self._pending:
+                task.cancel()
+                self._tasks.discard(task)
         # We use while-loop here because "self._on_completed"
         # can be cancelled multiple times if our parent task
         # is being cancelled repeatedly (or even once, when
@@ -149,6 +155,7 @@ class TaskGroup:
         t = self._loop.create_task(self._run_task(k, coro))
         k[0] = t  # sigh
         self._tasks.add(t)
+        self._pending.add(t)
         return t
 
     def cancel(self):
@@ -178,6 +185,7 @@ class TaskGroup:
     async def _run_task(self, k, coro):
         task = k[0]
         assert task is not None
+        self._pending.remove(task)
 
         try:
             await coro
