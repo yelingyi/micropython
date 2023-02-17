@@ -3,7 +3,6 @@
 
 from . import core
 from . import event
-from . import task
 
 _DEBUG = const(False)
 _s_new = const(0)
