@@ -10,6 +10,7 @@ _s_entered = const(1)
 _s_exiting = const(2)
 _s_aborting = const(3)
 
+
 class TaskGroup:
     def __init__(self):
         self._state = _s_new
@@ -227,7 +228,7 @@ class TaskGroup:
             )
             return
 
-        if self._state< _s_aborting and not self._parent_cancel_requested:
+        if self._state < _s_aborting and not self._parent_cancel_requested:
             # If parent task *is not* being cancelled, it means that we want
             # to manually cancel it to abort whatever is being run right now
             # in the TaskGroup.  But we want to mark parent task as

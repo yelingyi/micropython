@@ -9,8 +9,10 @@ except ImportError:
         print("SKIP")
         raise SystemExit
 
+
 class MyExc(Exception):
     pass
+
 
 async def test_taskgroup_01():
     T1 = T2 = 0
@@ -32,6 +34,7 @@ async def test_taskgroup_01():
     print("T1", T1)
     print("T2", T2)
 
+
 async def test_taskgroup_02():
     T1 = T2 = 0
 
@@ -52,6 +55,7 @@ async def test_taskgroup_02():
 
     print("T1", T1)
     print("T2", T2)
+
 
 async def test_taskgroup_03():
     T1 = T2 = 0
@@ -78,8 +82,8 @@ async def test_taskgroup_03():
     print("T1", T1)  # 0
     print("T2", T2)
 
-async def test_taskgroup_04():
 
+async def test_taskgroup_04():
     NUM = 0
     t2_cancel = False
     t2 = None
@@ -114,8 +118,8 @@ async def test_taskgroup_04():
     print("NUM", NUM)
     print("T2C", t2_cancel)
 
-async def test_taskgroup_05():
 
+async def test_taskgroup_05():
     NUM = 0
     t2_cancel = False
     runner_cancel = False
@@ -158,12 +162,12 @@ async def test_taskgroup_05():
     except ZeroDivisionError:
         print("ZeroDivision")
 
-    print("NUM",NUM)
+    print("NUM", NUM)
     print("T2", t2_cancel)
     print("RUN", runner_cancel)
 
-async def test_taskgroup_06():
 
+async def test_taskgroup_06():
     NUM = 0
 
     async def foo():
@@ -191,8 +195,8 @@ async def test_taskgroup_06():
 
     print("NUM", NUM)
 
-async def test_taskgroup_07():
 
+async def test_taskgroup_07():
     NUM = 0
 
     async def foo():
@@ -227,8 +231,8 @@ async def test_taskgroup_07():
 
     print("NUM", NUM)
 
-async def test_taskgroup_08():
 
+async def test_taskgroup_08():
     async def foo():
         await asyncio.sleep(0.1)
         1 / 0
@@ -253,8 +257,8 @@ async def test_taskgroup_08():
     except asyncio.CancelledError:
         print("CANCEL")
 
-async def test_taskgroup_09():
 
+async def test_taskgroup_09():
     t1 = t2 = None
     T1 = T2 = 0
 
@@ -284,8 +288,8 @@ async def test_taskgroup_09():
     print("T1", T1)
     print("T2", T2)
 
-async def test_taskgroup_10():
 
+async def test_taskgroup_10():
     t1 = t2 = None
     T1 = T2 = 0
 
@@ -315,8 +319,8 @@ async def test_taskgroup_10():
     print("T1", T1)
     print("T2", T2)
 
-async def test_taskgroup_11():
 
+async def test_taskgroup_11():
     async def foo():
         await asyncio.sleep(0.1)
         1 / 0
@@ -342,8 +346,8 @@ async def test_taskgroup_11():
     except asyncio.CancelledError:
         print("CANCEL")
 
-async def test_taskgroup_12():
 
+async def test_taskgroup_12():
     async def foo():
         await asyncio.sleep(0.1)
         1 / 0
@@ -371,8 +375,8 @@ async def test_taskgroup_12():
     except asyncio.CancelledError:
         print("CANCEL")
 
-async def test_taskgroup_13():
 
+async def test_taskgroup_13():
     async def crash_after(t):
         await asyncio.sleep(t)
         raise ValueError(t)
@@ -395,8 +399,8 @@ async def test_taskgroup_13():
     except ValueError:
         print("VAL")
 
-async def test_taskgroup_14():
 
+async def test_taskgroup_14():
     async def crash_after(t):
         await asyncio.sleep(t)
         raise ValueError(t)
@@ -414,8 +418,8 @@ async def test_taskgroup_14():
     except ValueError:
         print("VAL")
 
-async def test_taskgroup_15():
 
+async def test_taskgroup_15():
     async def crash_soon():
         await asyncio.sleep(0.3)
         1 / 0
@@ -437,10 +441,10 @@ async def test_taskgroup_15():
     try:
         await r
     except asyncio.CancelledError:
-        print ("CANCEL")
+        print("CANCEL")
+
 
 async def test_taskgroup_16():
-
     async def crash_soon():
         await asyncio.sleep(0.3)
         1 / 0
@@ -468,6 +472,7 @@ async def test_taskgroup_16():
     except asyncio.CancelledError:
         print("CANCEL")
 
+
 async def test_taskgroup_17():
     NUM = 0
 
@@ -491,6 +496,7 @@ async def test_taskgroup_17():
         print("CANCEL")
 
     print("NUM", NUM)
+
 
 async def test_taskgroup_18():
     NUM = 0
@@ -519,6 +525,7 @@ async def test_taskgroup_18():
 
     print("NUM", NUM)
 
+
 async def test_taskgroup_19():
     async def crash_soon():
         await asyncio.sleep(0.1)
@@ -541,6 +548,7 @@ async def test_taskgroup_19():
     except asyncio.ExceptionGroup:
         print("EXC OK")
 
+
 async def test_taskgroup_20():
     async def crash_soon():
         await asyncio.sleep(0.1)
@@ -561,6 +569,7 @@ async def test_taskgroup_20():
         await runner()
     except KeyboardInterrupt:
         print("KBD")
+
 
 async def test_taskgroup_21():
     # This test doesn't work as asyncio, currently, doesn't
@@ -586,9 +595,10 @@ async def test_taskgroup_21():
     except KeyboardInterrupt:
         print("KBD")
 
-async def test_taskgroup_22():
 
+async def test_taskgroup_22():
     T1 = T2 = 0
+
     async def foo1():
         nonlocal T1
         await asyncio.sleep(1)
@@ -616,8 +626,8 @@ async def test_taskgroup_22():
     print("T1", T1)
     print("T2", T2)
 
-async def test_taskgroup_23():
 
+async def test_taskgroup_23():
     async def do_job(delay):
         await asyncio.sleep(delay)
 
@@ -680,5 +690,6 @@ async def main():
     print("--- 23")
     await test_taskgroup_23()
     print("--- END")
+
 
 asyncio.run(main())
