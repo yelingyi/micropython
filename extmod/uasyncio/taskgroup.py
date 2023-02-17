@@ -1,15 +1,11 @@
 # Adapted with permission from the EdgeDB project.
 # Adapted for MicroPython
 
-
-__all__ = ["TaskGroup"]
-
 from . import core
 from . import event
 from . import task
 
-DEBUG = False
-
+_DEBUG = const(False)
 
 class TaskGroup:
     def __init__(self):
@@ -185,7 +181,7 @@ class TaskGroup:
         except core.CancelledError as e:
             exc = e
         except BaseException as e:
-            if DEBUG:
+            if _DEBUG:
                 import sys
 
                 sys.print_exception(e)
