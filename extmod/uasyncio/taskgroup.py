@@ -1,5 +1,5 @@
 # Adapted with permission from the EdgeDB project.
-# Adapted for MicroPython
+# MIT license; Copyright (c) 2023 Matthias Urlichs
 
 from . import core
 from . import event
