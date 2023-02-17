@@ -627,6 +627,7 @@ def run_tests(pyb, tests, args, result_dir, num_threads=1):
         skip_tests.add("extmod/asyncio_lock.py")  # requires async with
         skip_tests.add("extmod/asyncio_micropython.py")  # unknown issue
         skip_tests.add("extmod/asyncio_wait_for.py")  # unknown issue
+        skip_tests.add("extmod/asyncio_taskgroup.py")  # requires async with
         skip_tests.add("misc/features.py")  # requires raise_varargs
         skip_tests.add(
             "misc/print_exception.py"
