@@ -21,18 +21,19 @@ class TaskGroup:
         self._on_completed = None
 
     def __repr__(self):
-        info = [""]
-        if self._tasks:
-            info.append(f"tasks={len(self._tasks)}")
-        if self._errors:
-            info.append(f"errors={len(self._errors)}")
-        if self._aborting:
-            info.append("cancelling")
-        elif self._entered:
-            info.append("entered")
-
-        info_str = " ".join(info)
-        return f"<TaskGroup{info_str}>"
+        if _DEBUG:
+            info = [""]
+            if self._tasks:
+                info.append("tasks=" + str(len(self._tasks)))
+            if self._errors:
+                info.append("errors={}" + str(len(self._errors)))
+            if self._aborting:
+                info.append("cancelling")
+            elif self._entered:
+                info.append("entered")
+            return "<TaskGroup{}>".format(" ".join(info))
+        else:
+            return "<TaskGroup>"
 
     async def __aenter__(self):
         if self._entered:
