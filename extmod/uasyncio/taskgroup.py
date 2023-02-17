@@ -37,7 +37,7 @@ class TaskGroup:
 
     async def __aenter__(self):
         if self._entered:
-            raise RuntimeError(f"TaskGroup {repr(self)} has been already entered")
+            raise RuntimeError("TaskGroup has been already entered")
         self._entered = True
 
         if self._loop is None:
@@ -45,7 +45,7 @@ class TaskGroup:
 
         self._parent_task = core.current_task()
         if self._parent_task is None:
-            raise RuntimeError(f"TaskGroup {repr(self)} cannot determine the parent task")
+            raise RuntimeError("TaskGroup cannot determine the parent task")
 
         return self
 
@@ -139,9 +139,9 @@ class TaskGroup:
 
     def create_task(self, coro):
         if not self._entered:
-            raise RuntimeError(f"TaskGroup {repr(self)} has not been entered")
+            raise RuntimeError("TaskGroup has not been entered")
         if self._exiting and not self._tasks:
-            raise RuntimeError(f"TaskGroup {repr(self)} is finished")
+            raise RuntimeError("TaskGroup is finished")
 
         k = [None]
         t = self._loop.create_task(self._run_task(k, coro))
@@ -210,7 +210,7 @@ class TaskGroup:
             # it anyways.
             self._loop.call_exception_handler(
                 {
-                    "message": f"Task {repr(task)} has errored out but its parent task {self._parent_task} is already completed",
+                    "message": "Task has errored out but its parent is already completed",
                     "exception": exc,
                     "task": task,
                 }
