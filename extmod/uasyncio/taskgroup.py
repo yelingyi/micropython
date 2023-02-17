@@ -2,7 +2,7 @@
 # MIT license; Copyright (c) 2023 Matthias Urlichs
 
 from . import core
-from . import event
+from . import Event
 
 _DEBUG = const(False)
 _s_new = const(0)
@@ -95,7 +95,7 @@ class TaskGroup:
         # our own cancellation is already in progress)
         while self._tasks:
             if self._on_completed is None:
-                self._on_completed = event.Event()
+                self._on_completed = Event()
 
             try:
                 await self._on_completed.wait()
