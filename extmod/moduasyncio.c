@@ -297,6 +297,7 @@ STATIC MP_DEFINE_CONST_OBJ_TYPE(
     MP_QSTR_Task,
     MP_TYPE_FLAG_ITER_IS_CUSTOM,
     make_new, task_make_new,
+    unary_op, mp_generic_unary_op,
     attr, task_attr,
     iter, &task_getiter_iternext
     );
