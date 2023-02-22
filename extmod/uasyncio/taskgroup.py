@@ -61,27 +61,12 @@ class TaskGroup:
             self._base_error = exc
 
         if et is not None:
-            if et is core.CancelledError:
-                # micropython doesn't have an uncancel counter
-                # if self._parent_cancel_requested and not self._parent_task.uncancel():
-                # Do nothing, i.e. swallow the error.
-                #   pass
-                # else:
-                propagate_cancellation_error = exc
-
             if self._state < _s_aborting:
-                # Our parent task is being cancelled:
-                #
-                #    async with TaskGroup() as g:
-                #        g.create_task(...)
-                #        await ...  # <- CancelledError
-                #
-                # or there's an exception in "async with":
-                #
-                #    async with TaskGroup() as g:
-                #        g.create_task(...)
-                #        1 / 0
-                #
+                if et is core.CancelledError:
+                    # Handle "external" cancellation.
+                    propagate_cancellation_error = exc
+
+                # Otherwise the main task raised an error.
                 self._abort()
 
             # Tasks that didn't yet enter our _run_task wrapper
@@ -101,14 +86,7 @@ class TaskGroup:
                 await self._on_completed.wait()
             except core.CancelledError as ex:
                 if self._state < _s_aborting:
-                    # Our parent task is being cancelled:
-                    #
-                    #    async def wrapper():
-                    #        async with TaskGroup() as g:
-                    #            g.create_task(foo)
-                    #
-                    # "wrapper" is being cancelled while "foo" is
-                    # still running.
+                    # Our parent task is being cancelled.
                     propagate_cancellation_error = ex
                     self._abort()
 
@@ -117,13 +95,8 @@ class TaskGroup:
         assert not self._tasks
 
         if self._base_error is not None:
+            # SystemExit and Keyboardinterrupt get propagated as they are
             raise self._base_error
-
-        if propagate_cancellation_error is not None:
-            # The wrapping task was cancelled; since we're done with
-            # closing all child tasks, just propagate the cancellation
-            # request now.
-            raise propagate_cancellation_error
 
         if et is not None and et is not core.CancelledError:
             self._errors.append(exc)
@@ -138,6 +111,11 @@ class TaskGroup:
             if len(errors) == 1:
                 me = errors[0]
             else:
+                if _DEBUG:
+                    import sys
+
+                    for err in errors:
+                        sys.print_exception(err)
                 EGroup = core.ExceptionGroup
                 for err in errors:
                     if not isinstance(err, Exception):
@@ -145,6 +123,12 @@ class TaskGroup:
                         break
                 me = EGroup("unhandled errors in a TaskGroup", errors)
             raise me
+
+        elif propagate_cancellation_error is not None:
+            # The wrapping task was cancelled; since we're done with
+            # closing all child tasks, just propagate the cancellation
+            # request now.
+            raise propagate_cancellation_error
 
     def create_task(self, coro):
         if self._state == _s_new:
@@ -168,11 +152,9 @@ class TaskGroup:
         except RuntimeError:
             raise core.CancelledError()
 
-    # Since Python 3.8 Tasks propagate all exceptions correctly,
-    # except for KeyboardInterrupt and SystemExit which are
-    # still considered special.
-
     def _is_base_error(self, exc: BaseException) -> bool:
+        # KeyboardInterrupt and SystemExit are "special": they should
+        # never be wrapped with a [Base]ExceptionGroup.
         assert isinstance(exc, BaseException)
         return isinstance(exc, (SystemExit, KeyboardInterrupt))
 
@@ -199,7 +181,6 @@ class TaskGroup:
                 sys.print_exception(e)
 
             exc = e
-            self._abort()
         else:
             exc = None
         finally:

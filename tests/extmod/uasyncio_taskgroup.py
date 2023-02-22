@@ -147,9 +147,9 @@ async def test_taskgroup_05():
             g.create_task(foo2())
             try:
                 await asyncio.sleep(10)
-            except asyncio.CancelledError:
+            except asyncio.CancelledError as exc:
                 runner_cancel = True
-                # raise  ## XXX should still work
+                raise exc
 
         NUM += 10
 
@@ -192,6 +192,8 @@ async def test_taskgroup_06():
         await r
     except asyncio.CancelledError:
         print("CANCEL")
+    except ZeroDivisionError:
+        print("Zero")
 
     print("NUM", NUM)
 
@@ -242,13 +244,10 @@ async def test_taskgroup_08():
             for _ in range(5):
                 g.create_task(foo())
 
-            try:
-                await asyncio.sleep(10)
-            except asyncio.CancelledError:
-                raise
+            await asyncio.sleep(10)
 
     r = asyncio.get_event_loop().create_task(runner())
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(0.2)
 
     print("D", r.done())
     r.cancel()
@@ -256,6 +255,8 @@ async def test_taskgroup_08():
         await r
     except asyncio.CancelledError:
         print("CANCEL")
+    except ZeroDivisionError:
+        print("Zero")
 
 
 async def test_taskgroup_09():
@@ -283,7 +284,7 @@ async def test_taskgroup_09():
     try:
         await runner()
     except ZeroDivisionError:
-        print("ZDE")
+        print("ZERO")
 
     print("T1", T1)
     print("T2", T2)
@@ -308,13 +309,12 @@ async def test_taskgroup_10():
         async with asyncio.TaskGroup() as g:
             t1 = g.create_task(foo1())
             t2 = g.create_task(foo2())
-            print("XX1")
             1 / 0
 
     try:
         await runner()
     except ZeroDivisionError:
-        print("ZDE")
+        print("ZERO")
 
     print("T1", T1)
     print("T2", T2)
@@ -337,7 +337,7 @@ async def test_taskgroup_11():
                     raise
 
     r = asyncio.get_event_loop().create_task(runner())
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(0.2)
 
     print("D", r.done())
     r.cancel()
@@ -345,6 +345,8 @@ async def test_taskgroup_11():
         await r
     except asyncio.CancelledError:
         print("CANCEL")
+    except ZeroDivisionError:
+        print("ZERO")
 
 
 async def test_taskgroup_12():
@@ -374,6 +376,8 @@ async def test_taskgroup_12():
         await r
     except asyncio.CancelledError:
         print("CANCEL")
+    except ZeroDivisionError:
+        print("ZERO")
 
 
 async def test_taskgroup_13():
@@ -395,9 +399,11 @@ async def test_taskgroup_13():
     try:
         await r
     except asyncio.CancelledError:
-        print("CANC")
+        print("CANCEL")
     except ValueError:
         print("VAL")
+    except asyncio.ExceptionGroup as exc:
+        print("EGR", len(exc.args))
 
 
 async def test_taskgroup_14():
@@ -442,6 +448,8 @@ async def test_taskgroup_15():
         await r
     except asyncio.CancelledError:
         print("CANCEL")
+    except ZeroDivisionError:
+        print("ZERO")
 
 
 async def test_taskgroup_16():
@@ -471,6 +479,8 @@ async def test_taskgroup_16():
         await r
     except asyncio.CancelledError:
         print("CANCEL")
+    except ZeroDivisionError:
+        print("ZERO")
 
 
 async def test_taskgroup_17():
@@ -641,7 +651,12 @@ async def test_taskgroup_23():
         print("END", len(g._tasks))
 
 
+def exc_handler(loop, ctx):
+    print("Not handled:", str(ctx["exception"]))
+
+
 async def main():
+    asyncio.get_event_loop().set_exception_handler(exc_handler)
     # Basics
     print("--- 01")
     await test_taskgroup_01()
