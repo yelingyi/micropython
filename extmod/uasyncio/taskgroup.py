@@ -180,7 +180,7 @@ class TaskGroup:
         self._state = _s_aborting
 
         for t in self._tasks:
-            if not t.done():
+            if t is not core.cur_task and not t.done():
                 t.cancel()
 
     async def _run_task(self, k, coro):
@@ -199,6 +199,7 @@ class TaskGroup:
                 sys.print_exception(e)
 
             exc = e
+            self._abort()
         else:
             exc = None
         finally:
