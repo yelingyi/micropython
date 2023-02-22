@@ -368,7 +368,7 @@ async def test_taskgroup_12():
                     raise
 
     r = asyncio.get_event_loop().create_task(runner())
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(0.2)
 
     print("R", r.done())
     r.cancel()

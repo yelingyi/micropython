@@ -41,7 +41,8 @@ Not handled: divide by zero
 D True
 ZERO
 --- 12
-R False
+Not handled: divide by zero
+R True
 ZERO
 --- 13
 E1
