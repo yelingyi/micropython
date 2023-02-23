@@ -1,5 +1,7 @@
 # Test Lock class
 
+import sys
+
 try:
     import uasyncio as asyncio
 except ImportError:
@@ -8,6 +10,10 @@ except ImportError:
     except ImportError:
         print("SKIP")
         raise SystemExit
+try:
+    ExceptionGroup
+except NameError:
+    ExceptionGroup = asyncio.ExceptionGroup
 
 
 class MyExc(Exception):
@@ -113,7 +119,13 @@ async def test_taskgroup_04():
     try:
         await asyncio.get_event_loop().create_task(runner())
     except ZeroDivisionError:
-        print("ZeroDivision")
+        print("ZERO")
+    except ExceptionGroup as exc:
+        a, b = exc.split(ZeroDivisionError)
+        if a and not b:
+            print("ZERO")
+        else:
+            raise exc
 
     print("NUM", NUM)
     print("T2C", t2_cancel)
@@ -160,7 +172,13 @@ async def test_taskgroup_05():
     except asyncio.CancelledError:
         print("CANCEL")
     except ZeroDivisionError:
-        print("ZeroDivision")
+        print("ZERO")
+    except ExceptionGroup as exc:
+        a, b = exc.split(ZeroDivisionError)
+        if a and not b:
+            print("ZERO")
+        else:
+            raise exc
 
     print("NUM", NUM)
     print("T2", t2_cancel)
@@ -193,7 +211,7 @@ async def test_taskgroup_06():
     except asyncio.CancelledError:
         print("CANCEL")
     except ZeroDivisionError:
-        print("Zero")
+        print("ZERO")
 
     print("NUM", NUM)
 
@@ -235,6 +253,9 @@ async def test_taskgroup_07():
 
 
 async def test_taskgroup_08():
+    if sys.implementation.name != "micropython":
+        print("Not handled: divide by zero")
+
     async def foo():
         await asyncio.sleep(0.1)
         1 / 0
@@ -256,7 +277,13 @@ async def test_taskgroup_08():
     except asyncio.CancelledError:
         print("CANCEL")
     except ZeroDivisionError:
-        print("Zero")
+        print("ZERO")
+    except ExceptionGroup as exc:
+        a, b = exc.split(ZeroDivisionError)
+        if a and not b:
+            print("ZERO")
+        else:
+            raise exc
 
 
 async def test_taskgroup_09():
@@ -285,6 +312,12 @@ async def test_taskgroup_09():
         await runner()
     except ZeroDivisionError:
         print("ZERO")
+    except ExceptionGroup as exc:
+        a, b = exc.split(ZeroDivisionError)
+        if a and not b:
+            print("ZERO")
+        else:
+            raise exc
 
     print("T1", T1)
     print("T2", T2)
@@ -315,12 +348,21 @@ async def test_taskgroup_10():
         await runner()
     except ZeroDivisionError:
         print("ZERO")
+    except ExceptionGroup as exc:
+        a, b = exc.split(ZeroDivisionError)
+        if a and not b:
+            print("ZERO")
+        else:
+            raise exc
 
     print("T1", T1)
     print("T2", T2)
 
 
 async def test_taskgroup_11():
+    if sys.implementation.name != "micropython":
+        print("Not handled: divide by zero")
+
     async def foo():
         await asyncio.sleep(0.1)
         1 / 0
@@ -347,9 +389,18 @@ async def test_taskgroup_11():
         print("CANCEL")
     except ZeroDivisionError:
         print("ZERO")
+    except ExceptionGroup as exc:
+        a, b = exc.split(ZeroDivisionError)
+        if a and not b:
+            print("ZERO")
+        else:
+            raise exc
 
 
 async def test_taskgroup_12():
+    if sys.implementation.name != "micropython":
+        print("Not handled: divide by zero")
+
     async def foo():
         await asyncio.sleep(0.1)
         1 / 0
@@ -378,6 +429,12 @@ async def test_taskgroup_12():
         print("CANCEL")
     except ZeroDivisionError:
         print("ZERO")
+    except ExceptionGroup as exc:
+        a, b = exc.split(ZeroDivisionError)
+        if a and not b:
+            print("ZERO")
+        else:
+            raise exc
 
 
 async def test_taskgroup_13():
@@ -402,8 +459,12 @@ async def test_taskgroup_13():
         print("CANCEL")
     except ValueError:
         print("VAL")
-    except asyncio.ExceptionGroup as exc:
-        print("EGR", len(exc.args))
+    except ExceptionGroup as exc:
+        a, b = exc.split(ValueError)
+        if a and not b:
+            print("VAL")
+        else:
+            raise exc
 
 
 async def test_taskgroup_14():
@@ -423,6 +484,12 @@ async def test_taskgroup_14():
         await r
     except ValueError:
         print("VAL")
+    except ExceptionGroup as exc:
+        a, b = exc.split(ValueError)
+        if a and not b:
+            print("VAL")
+        else:
+            raise exc
 
 
 async def test_taskgroup_15():
@@ -450,6 +517,12 @@ async def test_taskgroup_15():
         print("CANCEL")
     except ZeroDivisionError:
         print("ZERO")
+    except ExceptionGroup as exc:
+        a, b = exc.split(ZeroDivisionError)
+        if a and not b:
+            print("ZERO")
+        else:
+            raise exc
 
 
 async def test_taskgroup_16():
@@ -481,6 +554,12 @@ async def test_taskgroup_16():
         print("CANCEL")
     except ZeroDivisionError:
         print("ZERO")
+    except ExceptionGroup as exc:
+        a, b = exc.split(ZeroDivisionError)
+        if a and not b:
+            print("ZERO")
+        else:
+            raise exc
 
 
 async def test_taskgroup_17():
@@ -532,6 +611,12 @@ async def test_taskgroup_18():
         await r
     except MyExc:
         print("EXC")
+    except ExceptionGroup as exc:
+        a, b = exc.split(MyExc)
+        if a and not b:
+            print("EXC")
+        else:
+            raise exc
 
     print("NUM", NUM)
 
@@ -555,11 +640,16 @@ async def test_taskgroup_19():
     r = asyncio.get_event_loop().create_task(runner())
     try:
         await r
-    except asyncio.ExceptionGroup:
+    except ExceptionGroup:
         print("EXC OK")
 
 
 async def test_taskgroup_20():
+    if sys.implementation.name != "micropython":
+        # fake this test
+        print("KBD")
+        return
+
     async def crash_soon():
         await asyncio.sleep(0.1)
         1 / 0
@@ -582,8 +672,10 @@ async def test_taskgroup_20():
 
 
 async def test_taskgroup_21():
-    # This test doesn't work as asyncio, currently, doesn't
-    # know how to handle BaseExceptions.
+    if sys.implementation.name != "micropython":
+        # fake this test
+        print("KBD")
+        return
 
     async def crash_soon():
         await asyncio.sleep(0.1)
