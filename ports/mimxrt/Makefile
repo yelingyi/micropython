@@ -49,6 +49,7 @@ FROZEN_MANIFEST ?= boards/manifest.py
 # Include py core make definitions
 include $(TOP)/py/py.mk
 include $(TOP)/extmod/extmod.mk
+include ${TOP}/extmod/nimble/nimble.mk
 
 # Set SDK directory based on MCU_SERIES
 MCU_DIR = lib/nxp_driver/sdk/devices/$(MCU_SERIES)
@@ -80,6 +81,14 @@ INC += -I$(TOP)/lib/tinyusb/hw/bsp/teensy_40
 INC += -I$(TOP)/lib/tinyusb/src
 INC += -I.
 INC += -Ihal
+
+ifeq ($(MICROPY_PY_BLUETOOTH),1)
+INC += \
+    -I$(TOP)/extmod/nimble \
+    -I$(TOP)/lib/mynewt-nimble/nimble/host/include \
+    -I$(TOP)/lib/mynewt-nimble/nimble/include \
+    -I$(TOP)/lib/mynewt-nimble/porting/nimble/include
+endif
 
 # All settings for Ethernet support are controller by the value of MICROPY_PY_LWIP
 ifeq ($(MICROPY_PY_LWIP),1)
@@ -228,6 +237,13 @@ SRC_C += \
 	systick.c \
 	ticks.c \
 	tusb_port.c \
+
+ifeq ($(MICROPY_PY_BLUETOOTH),1)
+SRC_C += \
+	drivers/ninaw10/nina_bt_hci.c \
+    mpbthciport.c \
+    mpnimbleport.c
+endif
 
 SHARED_SRC_C += \
 	shared/libc/printf.c \
