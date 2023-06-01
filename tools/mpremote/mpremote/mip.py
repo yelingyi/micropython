@@ -5,6 +5,7 @@
 import urllib.error
 import urllib.request
 import json
+import re
 import tempfile
 import os
 
@@ -106,7 +107,10 @@ def _install_json(pyb, package_json_url, index, target, version, mpy):
         _download_file(pyb, file_url, fs_target_path)
     for target_path, url in package_json.get("urls", ()):
         fs_target_path = target + "/" + target_path
-        _download_file(pyb, _rewrite_url(url, version), fs_target_path)
+        _version = version
+        if url.startswith("github:") and "@" in url:
+            url, _version = url.split("@")
+        _download_file(pyb, _rewrite_url(url, _version), fs_target_path)
     for dep, dep_version in package_json.get("deps", ()):
         _install_package(pyb, dep, index, target, dep_version, mpy)
 
@@ -117,14 +121,16 @@ def _install_package(pyb, package, index, target, version, mpy):
         or package.startswith("https://")
         or package.startswith("github:")
     ):
-        if package.endswith(".py") or package.endswith(".mpy"):
+        match = re.search(r"(\.\w+)", package)
+        package_ext = match.group() if match else ""
+        if package_ext in (".py", ".mpy", ".txt", ".bin",".fon"):
             print(f"Downloading {package} to {target}")
             _download_file(
-                pyb, _rewrite_url(package, version), target + "/" + package.rsplit("/")[-1]
+                    pyb, _rewrite_url(package, version), target + "/" + package.rsplit("/")[-1]
             )
             return
         else:
-            if not package.endswith(".json"):
+            if package_ext != ".json":
                 if not package.endswith("/"):
                     package += "/"
                 package += "package.json"
