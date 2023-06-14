@@ -209,8 +209,8 @@ target_include_directories(${MICROPY_TARGET} PUBLIC
 )
 
 # Add additional extmod and usermod components.
-target_link_libraries(${MICROPY_TARGET} micropy_extmod_btree)
-target_link_libraries(${MICROPY_TARGET} usermod)
+target_link_libraries(${MICROPY_TARGET} PRIVATE micropy_extmod_btree)
+target_link_libraries(${MICROPY_TARGET} PRIVATE usermod)
 
 # Collect all of the include directories and compile definitions for the IDF components.
 foreach(comp ${IDF_COMPONENTS})
@@ -230,3 +230,26 @@ endif()
 
 # Include the main MicroPython cmake rules.
 include(${MICROPY_DIR}/py/mkrules.cmake)
+
+# Include riscv ulp code if exists in ulp_riscv sub directory
+if(EXISTS ${PROJECT_DIR}/ulp_riscv/main.c)
+    set(ulp_app_name ulp_${COMPONENT_NAME})
+    set(ulp_sources "${PROJECT_DIR}/ulp_riscv/main.c")
+    set(ulp_exp_dep_srcs "${PROJECT_DIR}/main.c")
+
+    ulp_embed_binary(${ulp_app_name} "${ulp_sources}" "${ulp_exp_dep_srcs}")
+endif()
+
+# Generate ULP variable constants
+if(EXISTS ${PROJECT_DIR}/ulp_riscv/main.c)
+    add_custom_command(
+      OUTPUT ${PROJECT_DIR}/build/esp32_ulpconst_qstr.h
+      COMMAND python ${PROJECT_DIR}/make-esp32ulpconst.py ../../esp-idf/main/ulp_main/ulp_main.ld
+      DEPENDS ${PROJECT_DIR}/build/esp-idf/main/ulp_main/ulp_main.ld
+      COMMENT "Parsing ULP headers"
+      VERBATIM
+      )
+
+    add_library(ULP_CONST INTERFACE ${PROJECT_DIR}/build/esp32_ulpconst_qstr.h)
+
+endif()
