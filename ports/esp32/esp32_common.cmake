@@ -32,6 +32,7 @@ list(APPEND MICROPY_SOURCE_SHARED
     ${MICROPY_DIR}/shared/netutils/netutils.c
     ${MICROPY_DIR}/shared/timeutils/timeutils.c
     ${MICROPY_DIR}/shared/runtime/interrupt_char.c
+    ${MICROPY_DIR}/shared/runtime/mpirq.c
     ${MICROPY_DIR}/shared/runtime/stdout_helpers.c
     ${MICROPY_DIR}/shared/runtime/sys_stdio_mphal.c
     ${MICROPY_DIR}/shared/runtime/pyexec.c
@@ -82,6 +83,7 @@ list(APPEND MICROPY_SOURCE_PORT
     modesp.c
     esp32_nvs.c
     esp32_partition.c
+    esp32_pcnt.c
     esp32_rmt.c
     esp32_ulp.c
     modesp32.c
