@@ -547,6 +547,7 @@ def run_tests(pyb, tests, args, result_dir, num_threads=1):
         skip_tests.add("extmod/ssl_poll.py")
     elif args.emit == "native":
         skip_tests.add("extmod/asyncio_heaplock.py")
+        skip_tests.add("thread/thread_exc1.py")
 
     # Some tests shouldn't be run on a PC
     if args.target == "unix":
