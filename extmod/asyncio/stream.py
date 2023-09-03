@@ -5,6 +5,7 @@ from . import core
 
 
 class Stream:
+    # The underlying socket must have an idempotent `close` method.
     def __init__(self, s, e={}):
         self.s = s
         self.e = e
@@ -17,14 +18,16 @@ class Stream:
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
+        # XXX yield?
         self.s.close()
-        pass
 
     def close(self):
-        pass
+        # The (old) CPython idiom is to call `close`, then immediately
+        # follow up with `await stream.wait_closed`.
+        self.s.close()
 
     async def wait_closed(self):
-        # TODO yield?
+        # XXX yield?
         self.s.close()
 
     # async
