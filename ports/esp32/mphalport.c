@@ -52,6 +52,7 @@
 #if MICROPY_PY_STRING_TX_GIL_THRESHOLD < 0
 #error "MICROPY_PY_STRING_TX_GIL_THRESHOLD must be positive"
 #endif
+#include "py/mpprint.h"
 
 TaskHandle_t mp_main_task_handle;
 
