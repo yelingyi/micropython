@@ -81,6 +81,11 @@ def _rewrite_url(url, branch=None):
 
 
 def _download_file(transport, url, dest):
+    if url.split(":", 1)[0] not in ("http", "https"):
+        print("Installing:", dest, "from", url)
+        _ensure_path_exists(transport, dest)
+        transport.fs_put(url, dest, progress_callback=show_progress_bar)
+        return
     try:
         with urllib.request.urlopen(url) as src:
             fd, path = tempfile.mkstemp()
