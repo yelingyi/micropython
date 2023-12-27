@@ -189,7 +189,26 @@ STATIC int machine_i2c_transfer_single(mp_obj_base_t *self_in, uint16_t addr, si
     }
 }
 
+STATIC int machine_i2c_clear_bus(mp_obj_base_t *self_in) {
+    machine_i2c_obj_t *self = (machine_i2c_obj_t *)self_in;
+    // Workaround issue with hardware I2C not supporting bus clear
+    mp_machine_soft_i2c_obj_t soft_i2c = {
+        .base = { &mp_machine_soft_i2c_type },
+        .us_delay = 500000 / self->freq + 1,
+        .us_timeout = self->timeout,
+        .scl = self->scl,
+        .sda = self->sda,
+    };
+    mp_hal_pin_open_drain(self->scl);
+    mp_hal_pin_open_drain(self->sda);
+    int ret = mp_machine_soft_i2c_clear_bus(&soft_i2c.base);
+    gpio_set_function(self->scl, GPIO_FUNC_I2C);
+    gpio_set_function(self->sda, GPIO_FUNC_I2C);
+    return ret;
+}
+
 STATIC const mp_machine_i2c_p_t machine_i2c_p = {
+    .clear_bus = machine_i2c_clear_bus,
     .transfer = mp_machine_i2c_transfer_adaptor,
     .transfer_single = machine_i2c_transfer_single,
 };
