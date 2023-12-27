@@ -242,6 +242,26 @@ int mp_machine_soft_i2c_transfer(mp_obj_base_t *self_in, uint16_t addr, size_t n
     return transfer_ret;
 }
 
+// return value:
+//    0 - success
+//   <0 - error, with errno being the negative of the return value
+int mp_machine_soft_i2c_clear_bus(mp_obj_base_t *self_in) {
+    machine_i2c_obj_t *self = (machine_i2c_obj_t *)self_in;
+
+    mp_hal_i2c_sda_release(self);
+    for (int i = 0; i < 10; i++) {
+        mp_hal_i2c_delay(self);
+        mp_hal_i2c_scl_low(self);
+        mp_hal_i2c_delay(self);
+        int ret = mp_hal_i2c_scl_release(self);
+        if (ret != 0) {
+            mp_hal_i2c_stop(self);
+            return ret;
+        }
+    }
+    return mp_hal_i2c_stop(self);
+}
+
 #endif // MICROPY_PY_MACHINE_SOFTI2C
 
 /******************************************************************************/
@@ -364,6 +384,20 @@ STATIC mp_obj_t machine_i2c_stop(mp_obj_t self_in) {
     return mp_const_none;
 }
 MP_DEFINE_CONST_FUN_OBJ_1(machine_i2c_stop_obj, machine_i2c_stop);
+
+STATIC mp_obj_t machine_i2c_clear_bus(mp_obj_t self_in) {
+    mp_obj_base_t *self = (mp_obj_base_t *)MP_OBJ_TO_PTR(self_in);
+    mp_machine_i2c_p_t *i2c_p = (mp_machine_i2c_p_t *)MP_OBJ_TYPE_GET_SLOT(self->type, protocol);
+    if (i2c_p->clear_bus == NULL) {
+        mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("I2C operation not supported"));
+    }
+    int ret = i2c_p->clear_bus(self);
+    if (ret != 0) {
+        mp_raise_OSError(-ret);
+    }
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_1(machine_i2c_clear_bus_obj, machine_i2c_clear_bus);
 
 STATIC mp_obj_t machine_i2c_readinto(size_t n_args, const mp_obj_t *args) {
     mp_obj_base_t *self = (mp_obj_base_t *)MP_OBJ_TO_PTR(args[0]);
@@ -638,6 +672,7 @@ STATIC const mp_rom_map_elem_t machine_i2c_locals_dict_table[] = {
     // primitive I2C operations
     { MP_ROM_QSTR(MP_QSTR_start), MP_ROM_PTR(&machine_i2c_start_obj) },
     { MP_ROM_QSTR(MP_QSTR_stop), MP_ROM_PTR(&machine_i2c_stop_obj) },
+    { MP_ROM_QSTR(MP_QSTR_clear_bus), MP_ROM_PTR(&machine_i2c_clear_bus_obj) },
     { MP_ROM_QSTR(MP_QSTR_readinto), MP_ROM_PTR(&machine_i2c_readinto_obj) },
     { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&machine_i2c_write_obj) },
 
@@ -726,6 +761,7 @@ STATIC const mp_machine_i2c_p_t mp_machine_soft_i2c_p = {
     .init = mp_machine_soft_i2c_init,
     .start = (int (*)(mp_obj_base_t *))mp_hal_i2c_start,
     .stop = (int (*)(mp_obj_base_t *))mp_hal_i2c_stop,
+    .clear_bus = mp_machine_soft_i2c_clear_bus,
     .read = mp_machine_soft_i2c_read,
     .write = mp_machine_soft_i2c_write,
     .transfer = mp_machine_soft_i2c_transfer,
