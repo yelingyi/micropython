@@ -56,6 +56,9 @@
 // Used by CPU2 to prevent CPU1 from writing/erasing data in flash memory.
 #define SEMID_FLASH_CPU2 (7)
 
+#define SEM_LOCK_SUCCESSFUL (0)
+#define SEM_LOCK_BUSY (1)
+
 #endif
 
 typedef struct {
@@ -242,35 +245,120 @@ int32_t flash_get_sector_info(uint32_t addr, uint32_t *start_addr, uint32_t *siz
     return -1;
 }
 
+
+#if MICROPY_HW_STM32WB_FLASH_SYNCRONISATION
+static mp_uint_t flash_sync_lock_aquire(void) {
+    // Wait for flash interlocks
+    mp_uint_t atomic_state;
+
+    for (;;) {
+        // Wait for PES (if it's enabled, no-op if not).
+        while (LL_FLASH_IsActiveFlag_OperationSuspended()) {
+        }
+
+        atomic_state = MICROPY_BEGIN_ATOMIC_SECTION();
+
+        // Check the flash hasn't already been locked elsewhere by CPU1
+        if (LL_HSEM_GetStatus(HSEM, SEMID_FLASH_CPU1) == SEM_LOCK_SUCCESSFUL) {
+
+            // Ensure CPU2 isn't already using the flash
+            if (LL_HSEM_1StepLock(HSEM, SEMID_FLASH_CPU2) == SEM_LOCK_SUCCESSFUL) {
+                // Got the lock, continue flash operation
+                break;
+            }
+            //  CPU2 Locked, release our semaphore / critical section to try again.
+            LL_HSEM_ReleaseLock(HSEM, SEMID_FLASH_CPU2, 0);
+        }
+        MICROPY_END_ATOMIC_SECTION(atomic_state);
+
+        MICROPY_EVENT_POLL_HOOK
+    }
+    return atomic_state;
+}
+
+static void flash_sync_lock_release(mp_uint_t atomic_state) {
+    // Release flash lock.
+    while (__HAL_FLASH_GET_FLAG(FLASH_FLAG_CFGBSY)) {
+    }
+    LL_HSEM_ReleaseLock(HSEM, SEMID_FLASH_CPU2, 0);
+
+    MICROPY_END_ATOMIC_SECTION(atomic_state);
+}
+
 int flash_erase(uint32_t flash_dest, uint32_t num_word32) {
+    HAL_StatusTypeDef status = 0;
+
     // check there is something to write
     if (num_word32 == 0) {
         return 0;
     }
 
-    #if MICROPY_HW_STM32WB_FLASH_SYNCRONISATION
     // Acquire lock on the flash peripheral.
     while (LL_HSEM_1StepLock(HSEM, SEMID_FLASH_REGISTERS)) {
     }
-    #endif
 
     // Unlock the flash for erase.
     HAL_FLASH_Unlock();
 
-    #if MICROPY_HW_STM32WB_FLASH_SYNCRONISATION
     // Tell the HCI controller stack we're starting an erase, so it
     // avoids radio activity for a while.
     rfcore_start_flash_erase();
-    // Wait for PES.
-    while (LL_FLASH_IsActiveFlag_OperationSuspended()) {
+
+    // On STM32WB only one page shall be erased per semaphore lock
+    size_t total_pages = (4 * num_word32 + FLASH_PAGE_SIZE - 4) / FLASH_PAGE_SIZE;
+    for (size_t i = 0; i < total_pages && status == 0; i++) {
+        num_word32 = 1024; // 1 page
+
+        // Wait for flash semaphore locks
+        mp_uint_t sync_lock = flash_sync_lock_aquire();
+
+        // Clear pending flags (if any) and set up EraseInitStruct.
+        FLASH_EraseInitTypeDef EraseInitStruct;
+        #if defined(STM32WB)
+        __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS);
+        EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
+        EraseInitStruct.Page = get_page(flash_dest);
+        EraseInitStruct.NbPages = (4 * num_word32 + FLASH_PAGE_SIZE - 4) / FLASH_PAGE_SIZE;
+        #else
+        #error "MICROPY_HW_STM32WB_FLASH_SYNCRONISATION only supported on STM32WB"
+        #endif
+
+        // Erase the sectors.
+        uint32_t SectorError = 0;
+        status |= HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError);
+
+        // Release flash lock.
+        flash_sync_lock_release(sync_lock);
+
+        flash_dest += FLASH_PAGE_SIZE;
     }
-    // Wait for flash lock.
-    while (LL_HSEM_1StepLock(HSEM, SEMID_FLASH_CPU2)) {
+
+    // Tell HCI controller that erase is over.
+    rfcore_end_flash_erase();
+
+    // Lock the flash after erase.
+    HAL_FLASH_Lock();
+
+    // Release lock on the flash peripheral.
+    LL_HSEM_ReleaseLock(HSEM, SEMID_FLASH_REGISTERS, 0);
+
+    return mp_hal_status_to_neg_errno(status);
+}
+
+#else // ! MICROPY_HW_STM32WB_FLASH_SYNCRONISATION
+
+int flash_erase(uint32_t flash_dest, uint32_t num_word32) {
+    HAL_StatusTypeDef status = 0;
+
+    // check there is something to write
+    if (num_word32 == 0) {
+        return 0;
     }
-    #endif
+
+    // Unlock the flash for erase.
+    HAL_FLASH_Unlock();
 
     // Clear pending flags (if any) and set up EraseInitStruct.
-
     FLASH_EraseInitTypeDef EraseInitStruct;
     #if defined(STM32F0)
     __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_WRPERR | FLASH_FLAG_PGERR);
@@ -333,27 +421,15 @@ int flash_erase(uint32_t flash_dest, uint32_t num_word32) {
 
     // Erase the sectors.
     uint32_t SectorError = 0;
-    HAL_StatusTypeDef status = HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError);
-
-    #if MICROPY_HW_STM32WB_FLASH_SYNCRONISATION
-    // Release flash lock.
-    while (__HAL_FLASH_GET_FLAG(FLASH_FLAG_CFGBSY)) {
-    }
-    LL_HSEM_ReleaseLock(HSEM, SEMID_FLASH_CPU2, 0);
-    // Tell HCI controller that erase is over.
-    rfcore_end_flash_erase();
-    #endif
+    status = HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError);
 
     // Lock the flash after erase.
     HAL_FLASH_Lock();
 
-    #if MICROPY_HW_STM32WB_FLASH_SYNCRONISATION
-    // Release lock on the flash peripheral.
-    LL_HSEM_ReleaseLock(HSEM, SEMID_FLASH_REGISTERS, 0);
-    #endif
-
     return mp_hal_status_to_neg_errno(status);
 }
+
+#endif // ! MICROPY_HW_STM32WB_FLASH_SYNCRONISATION
 
 /*
 // erase the sector using an interrupt
@@ -394,12 +470,6 @@ int flash_write(uint32_t flash_dest, const uint32_t *src, uint32_t num_word32) {
     // Unlock the flash for write.
     HAL_FLASH_Unlock();
 
-    #if MICROPY_HW_STM32WB_FLASH_SYNCRONISATION
-    // Wait for PES.
-    while (LL_FLASH_IsActiveFlag_OperationSuspended()) {
-    }
-    #endif
-
     HAL_StatusTypeDef status = HAL_OK;
 
     #if defined(STM32G0) || defined(STM32G4) || defined(STM32L4) || defined(STM32WB) || defined(STM32WL)
@@ -409,18 +479,15 @@ int flash_write(uint32_t flash_dest, const uint32_t *src, uint32_t num_word32) {
         uint64_t val = *(uint64_t *)src;
 
         #if MICROPY_HW_STM32WB_FLASH_SYNCRONISATION
-        // Wait for flash lock.
-        while (LL_HSEM_1StepLock(HSEM, SEMID_FLASH_CPU2)) {
-        }
+        // Wait for flash interlocks
+        mp_uint_t sync_lock = flash_sync_lock_aquire();
         #endif
 
         status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, flash_dest, val);
 
         #if MICROPY_HW_STM32WB_FLASH_SYNCRONISATION
         // Release flash lock.
-        LL_HSEM_ReleaseLock(HSEM, SEMID_FLASH_CPU2, 0);
-        while (__HAL_FLASH_GET_FLAG(FLASH_FLAG_CFGBSY)) {
-        }
+        flash_sync_lock_release(sync_lock);
         #endif
 
         if (status != HAL_OK) {
@@ -435,18 +502,15 @@ int flash_write(uint32_t flash_dest, const uint32_t *src, uint32_t num_word32) {
         val = (val & 0xffffffff00000000uL) | (*src);
 
         #if MICROPY_HW_STM32WB_FLASH_SYNCRONISATION
-        // Wait for flash lock.
-        while (LL_HSEM_1StepLock(HSEM, SEMID_FLASH_CPU2)) {
-        }
+        // Wait for flash interlocks
+        mp_uint_t sync_lock = flash_sync_lock_aquire();
         #endif
 
         status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, flash_dest, val);
 
         #if MICROPY_HW_STM32WB_FLASH_SYNCRONISATION
         // Release flash lock.
-        LL_HSEM_ReleaseLock(HSEM, SEMID_FLASH_CPU2, 0);
-        while (__HAL_FLASH_GET_FLAG(FLASH_FLAG_CFGBSY)) {
-        }
+        flash_sync_lock_release(sync_lock);
         #endif
     }
 
