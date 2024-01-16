@@ -29,6 +29,14 @@
 #include "py/gc.h"
 #include "py/objfun.h"
 
+#if MICROPY_PERSISTENT_CODE_SAVE || MICROPY_PY_FUNCTION_ATTRS
+
+#if MICROPY_EMIT_BYTECODE_USES_QSTR_TABLE
+#define QSTR_MAP(context, idx) (context->constants.qstr_table[idx])
+#else
+#define QSTR_MAP(context, idx) ((idx)? idx: context->constants.source_file)
+#endif
+
 #if MICROPY_PY_SYS_SETTRACE
 
 #if !MICROPY_PERSISTENT_CODE_SAVE
@@ -38,7 +46,8 @@
 #endif
 
 #define prof_trace_cb MP_STATE_THREAD(prof_trace_callback)
-#define QSTR_MAP(context, idx) (context->constants.qstr_table[idx])
+
+#endif  // MICROPY_PY_SYS_SETTRACE
 
 STATIC uint mp_prof_bytecode_lineno(const mp_raw_code_t *rc, size_t bc) {
     const mp_bytecode_prelude_t *prelude = &rc->prelude;
@@ -101,7 +110,10 @@ STATIC mp_obj_tuple_t *code_consts(const mp_module_context_t *context, const mp_
     return consts;
 }
 
+#if MICROPY_PY_SYS_SETTRACE
 STATIC mp_obj_t raw_code_lnotab(const mp_raw_code_t *rc) {
+    // Returns a string encoding the mapping from bytecode offsets to line numbers.
+
     // const mp_bytecode_prelude_t *prelude = &rc->prelude;
     uint start = 0;
     uint stop = rc->fun_data_len - start;
@@ -138,6 +150,7 @@ STATIC mp_obj_t raw_code_lnotab(const mp_raw_code_t *rc) {
     m_del(byte, buffer, buffer_size);
     return o;
 }
+#endif // MICROPY_PY_SYS_SETTRACE
 
 STATIC void code_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     if (dest[0] != MP_OBJ_NULL) {
@@ -148,12 +161,14 @@ STATIC void code_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     const mp_raw_code_t *rc = o->rc;
     const mp_bytecode_prelude_t *prelude = &rc->prelude;
     switch (attr) {
+        #if MICROPY_PERSISTENT_CODE_SAVE || MICROPY_DEBUG_PRINTERS
         case MP_QSTR_co_code:
             dest[0] = mp_obj_new_bytes(
                 (void *)prelude->opcodes,
                 rc->fun_data_len - (prelude->opcodes - (const byte *)rc->fun_data)
                 );
             break;
+        #endif
         case MP_QSTR_co_consts:
             dest[0] = MP_OBJ_FROM_PTR(code_consts(o->context, rc));
             break;
@@ -169,12 +184,44 @@ STATIC void code_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
         case MP_QSTR_co_names:
             dest[0] = MP_OBJ_FROM_PTR(o->dict_locals);
             break;
+        case MP_QSTR_co_argcount:
+            dest[0] = MP_OBJ_NEW_SMALL_INT(prelude->n_pos_args + prelude->n_kwonly_args);
+            break;
+        case MP_QSTR_co_varnames: {
+            uint8_t len_args = prelude->n_pos_args + prelude->n_kwonly_args;
+            if (len_args == 0) {
+                dest[0] = mp_const_empty_tuple;
+            } else {
+                mp_obj_tuple_t *names = MP_OBJ_TO_PTR(mp_obj_new_tuple(len_args, NULL));
+
+                // get pointer to arg_names array
+                const uint8_t *arg_names = rc->fun_data;
+                if (arg_names != NULL) {
+                    for (uint8_t i = 0; i < 3; i++) {
+                        arg_names = mp_decode_uint_skip(arg_names);
+                    }
+
+                    // get qstr for each function arg and add to list
+                    for (uint i = 0; i < len_args; i++) {
+                        qstr arg_qstr = mp_decode_uint(&arg_names);
+                        #if MICROPY_EMIT_BYTECODE_USES_QSTR_TABLE
+                        arg_qstr = o->context->constants.qstr_table[arg_qstr];
+                        #endif
+                        names->items[i] = MP_OBJ_NEW_QSTR(arg_qstr);
+                    }
+                    dest[0] = MP_OBJ_FROM_PTR(names);
+                }
+            }
+            break;
+        }
+        #if MICROPY_PY_SYS_SETTRACE
         case MP_QSTR_co_lnotab:
             if (!o->lnotab) {
                 o->lnotab = raw_code_lnotab(rc);
             }
             dest[0] = o->lnotab;
             break;
+        #endif
     }
 }
 
@@ -198,6 +245,8 @@ mp_obj_t mp_obj_new_code(const mp_module_context_t *context, const mp_raw_code_t
     o->lnotab = MP_OBJ_NULL;
     return MP_OBJ_FROM_PTR(o);
 }
+
+#if MICROPY_PY_SYS_SETTRACE
 
 /******************************************************************************/
 // frame object
@@ -975,3 +1024,5 @@ void mp_prof_print_instr(const byte *ip, mp_code_state_t *code_state) {
 #endif // MICROPY_PROF_INSTR_DEBUG_PRINT_ENABLE
 
 #endif // MICROPY_PY_SYS_SETTRACE
+
+#endif // MICROPY_PERSISTENT_CODE_SAVE || MICROPY_PY_FUNCTION_ATTRS
