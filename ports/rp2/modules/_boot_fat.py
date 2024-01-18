@@ -10,6 +10,7 @@ try:
 except:
     os.VfsFat.mkfs(bdev)
     vfs = os.VfsFat(bdev)
+    vfs.label("RP2_MSC")
 os.mount(vfs, "/")
 
 del os, bdev, vfs
