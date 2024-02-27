@@ -169,6 +169,32 @@ STATIC void code_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
         case MP_QSTR_co_names:
             dest[0] = MP_OBJ_FROM_PTR(o->dict_locals);
             break;
+        case MP_QSTR_co_argcount:
+            dest[0] = MP_OBJ_NEW_SMALL_INT(prelude->n_pos_args + prelude->n_kwonly_args);
+            break;
+        case MP_QSTR_co_varnames: {
+            uint8_t len_args = prelude->n_pos_args + prelude->n_kwonly_args;
+            mp_obj_t names[len_args];
+
+            // get pointer to arg_names array
+            const uint8_t *arg_names = rc->fun_data;
+            if (arg_names != NULL) {
+                for (uint8_t i = 0; i < 3; i++) {
+                    arg_names = mp_decode_uint_skip(arg_names);
+                }
+
+                // get qstr for each function arg and add to list
+                for (uint i = 0; i < len_args; i++) {
+                    qstr arg_qstr = mp_decode_uint(&arg_names);
+                    #if MICROPY_EMIT_BYTECODE_USES_QSTR_TABLE
+                    arg_qstr = o->context->constants.qstr_table[arg_qstr];
+                    #endif
+                    names[i] = MP_OBJ_NEW_QSTR(arg_qstr);
+                }
+                dest[0] = mp_obj_new_tuple(len_args, names);
+            }
+            break;
+        }
         case MP_QSTR_co_lnotab:
             if (!o->lnotab) {
                 o->lnotab = raw_code_lnotab(rc);
@@ -218,17 +244,29 @@ STATIC void frame_print(const mp_print_t *print, mp_obj_t o_in, mp_print_kind_t 
 }
 
 STATIC void frame_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
-    if (dest[0] != MP_OBJ_NULL) {
+    mp_obj_frame_t *o = MP_OBJ_TO_PTR(self_in);
+
+    if (dest[0] == MP_OBJ_SENTINEL) {
+        // store attr
+        switch (attr) {
+            case MP_QSTR_f_trace:
+                o->trace_obj = dest[1];
+                dest[0] = MP_OBJ_NULL;
+                break;
+        }
+        return;
+    } else if (dest[0] != MP_OBJ_NULL) {
         // not load attribute
         return;
     }
-
-    mp_obj_frame_t *o = MP_OBJ_TO_PTR(self_in);
 
     switch (attr) {
         case MP_QSTR_f_back:
             dest[0] = mp_const_none;
             if (o->code_state->prev_state) {
+                if (!o->code_state->prev_state->frame) {
+                    o->code_state->prev_state->frame = MP_OBJ_TO_PTR(mp_obj_new_frame(o->code_state->prev_state));
+                }
                 dest[0] = MP_OBJ_FROM_PTR(o->code_state->prev_state->frame);
             }
             break;
@@ -243,6 +281,12 @@ STATIC void frame_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
             break;
         case MP_QSTR_f_lineno:
             dest[0] = MP_OBJ_NEW_SMALL_INT(o->lineno);
+            break;
+        case MP_QSTR_f_trace:
+            dest[0] = o->trace_obj;
+            break;
+        case MP_QSTR_f_locals:
+            dest[0] = MP_OBJ_FROM_PTR(o->code->dict_locals);
             break;
     }
 }
@@ -280,6 +324,7 @@ mp_obj_t mp_obj_new_frame(const mp_code_state_t *code_state) {
     o->lineno = mp_prof_bytecode_lineno(rc, o->lasti);
     o->trace_opcodes = false;
     o->callback = MP_OBJ_NULL;
+    o->trace_obj = MP_OBJ_NULL;
 
     return MP_OBJ_FROM_PTR(o);
 }
@@ -317,6 +362,33 @@ mp_obj_t mp_prof_settrace(mp_obj_t callback) {
         prof_trace_cb = MP_OBJ_NULL;
     }
     return mp_const_none;
+}
+
+mp_obj_t mp_prof_gettrace() {
+    if (prof_trace_cb == MP_OBJ_NULL) {
+        return mp_const_none;
+    }
+    return prof_trace_cb;
+}
+
+mp_obj_t mp_prof_get_frame(int depth) {
+
+    mp_code_state_t *code_state = MP_STATE_THREAD(current_code_state);
+
+    for (int i = 0; i < depth; i++) {
+        code_state = code_state->prev_state;
+        if (code_state == NULL) {
+            mp_raise_ValueError(MP_ERROR_TEXT("call stack is not deep enough"));
+        }
+    }
+
+    mp_obj_frame_t *frame = MP_OBJ_TO_PTR(mp_obj_new_frame(code_state));
+    if (frame == NULL) {
+        // Couldn't allocate a frame object
+        return MP_OBJ_NULL;
+    }
+
+    return MP_OBJ_FROM_PTR(frame);
 }
 
 mp_obj_t mp_prof_frame_enter(mp_code_state_t *code_state) {

@@ -51,6 +51,7 @@ typedef struct _mp_obj_frame_t {
     mp_uint_t lasti;
     mp_uint_t lineno;
     bool trace_opcodes;
+    mp_obj_t trace_obj;
 } mp_obj_frame_t;
 
 void mp_prof_extract_prelude(const byte *bytecode, mp_bytecode_prelude_t *prelude);
@@ -60,7 +61,9 @@ mp_obj_t mp_obj_new_frame(const mp_code_state_t *code_state);
 
 // This is the implementation for the sys.settrace
 mp_obj_t mp_prof_settrace(mp_obj_t callback);
+mp_obj_t mp_prof_gettrace();
 
+mp_obj_t mp_prof_get_frame(int depth);
 mp_obj_t mp_prof_frame_enter(mp_code_state_t *code_state);
 mp_obj_t mp_prof_frame_update(const mp_code_state_t *code_state);
 
