@@ -33,6 +33,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
+// Needed for NORETURN
+#include "py/mpconfig.h"
 
 typedef unsigned char byte;
 typedef unsigned int uint;
