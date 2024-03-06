@@ -158,6 +158,7 @@ typedef struct _mp_machine_i2c_p_t {
     void (*init)(mp_obj_base_t *obj, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args);
     int (*start)(mp_obj_base_t *obj);
     int (*stop)(mp_obj_base_t *obj);
+    int (*clear_bus)(mp_obj_base_t *obj);
     int (*read)(mp_obj_base_t *obj, uint8_t *dest, size_t len, bool nack);
     int (*write)(mp_obj_base_t *obj, const uint8_t *src, size_t len);
     int (*transfer)(mp_obj_base_t *obj, uint16_t addr, size_t n, mp_machine_i2c_buf_t *bufs, unsigned int flags);
@@ -252,6 +253,7 @@ MP_DECLARE_CONST_FUN_OBJ_VAR_BETWEEN(machine_bitstream_obj);
 MP_DECLARE_CONST_FUN_OBJ_VAR_BETWEEN(machine_time_pulse_us_obj);
 
 #if MICROPY_PY_MACHINE_I2C
+int mp_machine_soft_i2c_clear_bus(mp_obj_base_t *self);
 int mp_machine_i2c_transfer_adaptor(mp_obj_base_t *self, uint16_t addr, size_t n, mp_machine_i2c_buf_t *bufs, unsigned int flags);
 int mp_machine_soft_i2c_transfer(mp_obj_base_t *self, uint16_t addr, size_t n, mp_machine_i2c_buf_t *bufs, unsigned int flags);
 #endif
