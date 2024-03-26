@@ -195,10 +195,11 @@ static void re_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t 
 }
 
 static mp_obj_t re_exec(bool is_anchored, uint n_args, const mp_obj_t *args) {
-    (void)n_args;
     mp_obj_re_t *self;
+    bool was_compiled = false;
     if (mp_obj_is_type(args[0], (mp_obj_type_t *)&re_type)) {
         self = MP_OBJ_TO_PTR(args[0]);
+        was_compiled = true;
     } else {
         self = MP_OBJ_TO_PTR(mod_re_compile(1, args));
     }
@@ -206,6 +207,27 @@ static mp_obj_t re_exec(bool is_anchored, uint n_args, const mp_obj_t *args) {
     size_t len;
     subj.begin_line = subj.begin = mp_obj_str_get_data(args[1], &len);
     subj.end = subj.begin + len;
+
+    if (was_compiled && n_args > 2) {
+        // Arg #2 is starting-pos
+        size_t startpos = mp_obj_get_int(args[2]);
+        if (startpos >= len) {
+            startpos = len;
+        }
+        subj.begin += startpos;
+        if (n_args > 3) {
+            // Arg #3 is ending-pos
+            size_t endpos = mp_obj_get_int(args[3]);
+            if (endpos > len) {
+                endpos = len;
+            }
+            else if (endpos < startpos) {
+                endpos = startpos;
+            }
+            subj.end = subj.begin_line + endpos;
+        }
+    }
+
     int caps_num = (self->re.sub + 1) * 2;
     mp_obj_match_t *match = m_new_obj_var(mp_obj_match_t, caps, char *, caps_num);
     // cast is a workaround for a bug in msvc: it treats const char** as a const pointer instead of a pointer to pointer to const char
