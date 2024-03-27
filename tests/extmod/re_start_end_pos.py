@@ -18,6 +18,7 @@ def print_groups(match):
     except IndexError:
         pass
 
+
 p = re.compile(r"o")
 m = p.match("dog")
 print_groups(m)
@@ -45,15 +46,14 @@ m = p.match("dog", 1, 1)
 print_groups(m)
 
 # Search also works
-print('--search')
+print("--search")
 
 p = re.compile(r"o")
-m = p.search('dog')
+m = p.search("dog")
 print_groups(m)
 
-m = p.search('dog', 1)
+m = p.search("dog", 1)
 print_groups(m)
 
-m = p.search('dog', 2)
+m = p.search("dog", 2)
 print_groups(m)
-
