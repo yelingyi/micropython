@@ -140,6 +140,12 @@ Functions
 
    Note: availability of this function depends on :term:`MicroPython port`.
 
+.. function:: finditer(regex_str, string)
+
+    Return an iterator yielding ``Match`` objects over all non-overlapping
+    matches for the RE *regex_str* in *string*. The string is scanned
+    left-to-right, and matches are returned in the order found.
+
 .. data:: DEBUG
 
    Flag value, display debug information about compiled expression.
@@ -156,10 +162,11 @@ Compiled regular expression. Instances of this class are created using
 
 .. method:: regex.match(string, [pos, [endpos]])
             regex.search(string, [pos, [endpos]])
+            regex.finditer(string, [pos, [endpos]])
             regex.sub(replace, string, count=0, flags=0, /)
 
-   Similar to the module-level functions :meth:`match`, :meth:`search`
-   and :meth:`sub`.
+   Similar to the module-level functions :meth:`match`, :meth:`search`,
+   :meth:`finditer`, and :meth:`sub`.
    Using methods is (much) more efficient if the same regex is applied to
    multiple strings.
 
