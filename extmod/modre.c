@@ -210,15 +210,18 @@ static mp_obj_t re_exec(bool is_anchored, uint n_args, const mp_obj_t *args) {
 
     if (was_compiled && n_args > 2) {
         // Arg #2 is starting-pos
-        size_t startpos = mp_obj_get_int(args[2]);
-        if (startpos >= len) {
+        mp_int_t startpos = mp_obj_get_int(args[2]);
+        if (startpos > (mp_int_t) len) {
             startpos = len;
+        }
+        else if (startpos < 0) {
+            startpos = 0;
         }
         subj.begin += startpos;
         if (n_args > 3) {
             // Arg #3 is ending-pos
-            size_t endpos = mp_obj_get_int(args[3]);
-            if (endpos > len) {
+            mp_int_t endpos = mp_obj_get_int(args[3]);
+            if (endpos > (mp_int_t) len) {
                 endpos = len;
             }
             else if (endpos < startpos) {
