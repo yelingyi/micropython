@@ -29,7 +29,8 @@ print_groups(m)
 m = p.match("dog", 2)
 print_groups(m)
 
-m = p.match("dog", 3) # Past end of input
+# No match past end of input
+m = p.match("dog", 5)
 print_groups(m)
 
 m = p.match("dog", 0, 1)
@@ -40,9 +41,20 @@ p = re.compile(r"^o")
 m = p.match("dog", 1)
 print_groups(m)
 
-# End at begging means searching empty string
+# End at beginning means searching empty string
 p = re.compile(r"o")
 m = p.match("dog", 1, 1)
+print_groups(m)
+
+# End before the beginning doesn't match anything
+m = p.match("dog", 2, 1)
+print_groups(m)
+
+# Negative starting values don't crash
+m = p.search("dog", -2)
+print_groups(m)
+
+m = p.search("dog", -2, -5)
 print_groups(m)
 
 # Search also works
@@ -56,4 +68,11 @@ m = p.search("dog", 1)
 print_groups(m)
 
 m = p.search("dog", 2)
+print_groups(m)
+
+# Negative starting values don't crash
+m = p.search("dog", -2)
+print_groups(m)
+
+m = p.search("dog", -2, -5)
 print_groups(m)
