@@ -110,7 +110,7 @@ extern const mp_obj_type_t esp32_mcpwm_type;
 
 // Single Edge Asymmetric Waveform - Active High
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/mcpwm.html#single-edge-asymmetric-waveform-active-high
-STATIC void gen_action_config1(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
+static void gen_action_config1(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
     check_esp_err(mcpwm_generator_set_action_on_timer_event(gena,
         MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
     check_esp_err(mcpwm_generator_set_action_on_compare_event(gena,
@@ -123,7 +123,7 @@ STATIC void gen_action_config1(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb,
 
 // Single Edge Asymmetric Waveform - Active Low
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/mcpwm.html#single-edge-asymmetric-waveform-active-low
-STATIC void gen_action_config2(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
+static void gen_action_config2(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
     check_esp_err(mcpwm_generator_set_action_on_timer_event(gena,
         MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_FULL, MCPWM_GEN_ACTION_LOW)));
     check_esp_err(mcpwm_generator_set_action_on_compare_event(gena,
@@ -136,7 +136,7 @@ STATIC void gen_action_config2(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb,
 
 // Pulse Placement Asymmetric Waveform
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/mcpwm.html#pulse-placement-asymmetric-waveform
-STATIC void gen_action_config3(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
+static void gen_action_config3(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
     check_esp_err(mcpwm_generator_set_actions_on_compare_event(gena,
         MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, cmpa, MCPWM_GEN_ACTION_HIGH),
         MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, cmpb, MCPWM_GEN_ACTION_LOW),
@@ -148,7 +148,7 @@ STATIC void gen_action_config3(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb,
 
 // Dual Edge Asymmetric Waveform - Active Low
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/mcpwm.html#dual-edge-asymmetric-waveform-active-low
-STATIC void gen_action_config4(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
+static void gen_action_config4(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
     check_esp_err(mcpwm_generator_set_actions_on_compare_event(gena,
         MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, cmpa, MCPWM_GEN_ACTION_HIGH),
         MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_DOWN, cmpb, MCPWM_GEN_ACTION_LOW),
@@ -161,7 +161,7 @@ STATIC void gen_action_config4(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb,
 
 // Dual Edge Symmetric Waveform - Active Low
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/mcpwm.html#dual-edge-symmetric-waveform-active-low
-STATIC void gen_action_config5(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
+static void gen_action_config5(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
     check_esp_err(mcpwm_generator_set_actions_on_compare_event(gena,
         MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, cmpa, MCPWM_GEN_ACTION_HIGH),
         MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_DOWN, cmpa, MCPWM_GEN_ACTION_LOW),
@@ -174,7 +174,7 @@ STATIC void gen_action_config5(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb,
 
 // Dual Edge Symmetric Waveform - Complementary
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/mcpwm.html#dual-edge-symmetric-waveform-complementary
-STATIC void gen_action_config6(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
+static void gen_action_config6(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
     check_esp_err(mcpwm_generator_set_actions_on_compare_event(gena,
         MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, cmpa, MCPWM_GEN_ACTION_HIGH),
         MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_DOWN, cmpa, MCPWM_GEN_ACTION_LOW),
@@ -188,14 +188,14 @@ STATIC void gen_action_config6(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb,
 // Dead Time Configurations for Classical PWM Waveforms
 // Active High Complementary
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/mcpwm.html#active-high-complementary
-STATIC void gen_action_config7(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
+static void gen_action_config7(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
     check_esp_err(mcpwm_generator_set_action_on_timer_event(gena,
         MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
     check_esp_err(mcpwm_generator_set_action_on_compare_event(gena,
         MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, cmpa, MCPWM_GEN_ACTION_LOW)));
 }
 // +
-STATIC void dead_time_config7(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb) {
+static void dead_time_config7(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb) {
     mcpwm_dead_time_config_t dead_time_config = {
         .posedge_delay_ticks = self->deadtime_ticks,
         .negedge_delay_ticks = 0,
@@ -209,14 +209,14 @@ STATIC void dead_time_config7(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, 
 
 // Active Low, Complementary
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/mcpwm.html#active-low-complementary
-STATIC void gen_action_config8(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
+static void gen_action_config8(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
     check_esp_err(mcpwm_generator_set_action_on_timer_event(gena,
         MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
     check_esp_err(mcpwm_generator_set_action_on_compare_event(gena,
         MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, cmpa, MCPWM_GEN_ACTION_LOW)));
 }
 // +
-STATIC void dead_time_config8(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb) {
+static void dead_time_config8(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb) {
     mcpwm_dead_time_config_t dead_time_config = {
         .posedge_delay_ticks = self->deadtime_ticks,
         .negedge_delay_ticks = 0,
@@ -231,14 +231,14 @@ STATIC void dead_time_config8(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, 
 
 // Active High
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/mcpwm.html#active-high
-STATIC void gen_action_config9(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
+static void gen_action_config9(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
     check_esp_err(mcpwm_generator_set_action_on_timer_event(gena,
         MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
     check_esp_err(mcpwm_generator_set_action_on_compare_event(gena,
         MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, cmpa, MCPWM_GEN_ACTION_LOW)));
 }
 // +
-STATIC void dead_time_config9(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb) {
+static void dead_time_config9(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb) {
     mcpwm_dead_time_config_t dead_time_config = {
         .posedge_delay_ticks = self->deadtime_ticks,
         .negedge_delay_ticks = 0,
@@ -251,14 +251,14 @@ STATIC void dead_time_config9(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, 
 
 // Active Low
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/mcpwm.html#active-low
-STATIC void gen_action_config10(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
+static void gen_action_config10(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
     check_esp_err(mcpwm_generator_set_action_on_timer_event(gena,
         MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
     check_esp_err(mcpwm_generator_set_action_on_compare_event(gena,
         MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, cmpa, MCPWM_GEN_ACTION_LOW)));
 }
 // +
-STATIC void dead_time_config10(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb) {
+static void dead_time_config10(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb) {
     mcpwm_dead_time_config_t dead_time_config = {
         .posedge_delay_ticks = self->deadtime_ticks,
         .negedge_delay_ticks = 0,
@@ -272,7 +272,7 @@ STATIC void dead_time_config10(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena,
 
 // Rising Delay on PWMA and Bypass Dead Time for PWMB
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/mcpwm.html#rising-delay-on-pwma-and-bypass-dead-time-for-pwmb
-STATIC void gen_action_config11(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
+static void gen_action_config11(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
     check_esp_err(mcpwm_generator_set_action_on_timer_event(gena,
         MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
     check_esp_err(mcpwm_generator_set_action_on_compare_event(gena,
@@ -283,7 +283,7 @@ STATIC void gen_action_config11(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb
         MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, cmpb, MCPWM_GEN_ACTION_LOW)));
 }
 // +
-STATIC void dead_time_config11(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb) {
+static void dead_time_config11(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb) {
     mcpwm_dead_time_config_t dead_time_config = {
         .posedge_delay_ticks = self->deadtime_ticks,
         .negedge_delay_ticks = 0,
@@ -297,7 +297,7 @@ STATIC void dead_time_config11(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena,
 
 // Falling Delay on PWMB and Bypass Dead Time for PWMA
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/mcpwm.html#falling-delay-on-pwmb-and-bypass-dead-time-for-pwma
-STATIC void gen_action_config12(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
+static void gen_action_config12(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
     check_esp_err(mcpwm_generator_set_action_on_timer_event(gena,
         MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
     check_esp_err(mcpwm_generator_set_action_on_compare_event(gena,
@@ -308,7 +308,7 @@ STATIC void gen_action_config12(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb
         MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, cmpb, MCPWM_GEN_ACTION_LOW)));
 }
 // +
-STATIC void dead_time_config12(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb) {
+static void dead_time_config12(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb) {
     mcpwm_dead_time_config_t dead_time_config = {
         .posedge_delay_ticks = 0,
         .negedge_delay_ticks = 0,
@@ -323,7 +323,7 @@ STATIC void dead_time_config12(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena,
 
 // Rising and Falling Delay on PWMB and Bypass Dead Time for PWMA
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/mcpwm.html#rising-and-falling-delay-on-pwmb-and-bypass-dead-time-for-pwma
-STATIC void gen_action_config13(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
+static void gen_action_config13(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
     check_esp_err(mcpwm_generator_set_action_on_timer_event(gena,
         MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
     check_esp_err(mcpwm_generator_set_action_on_compare_event(gena,
@@ -334,7 +334,7 @@ STATIC void gen_action_config13(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb
         MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, cmpb, MCPWM_GEN_ACTION_LOW)));
 }
 // +
-STATIC void dead_time_config13(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb) {
+static void dead_time_config13(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb) {
     mcpwm_dead_time_config_t dead_time_config = {
         .posedge_delay_ticks = 0,
         .negedge_delay_ticks = 0,
@@ -348,7 +348,7 @@ STATIC void dead_time_config13(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena,
 }
 
 // https://github.com/espressif/esp-idf/blob/3b748a6cb76c2db7c6368a0dea32a88bc58bc44d/examples/peripherals/mcpwm/mcpwm_bldc_hall_control/main/mcpwm_bldc_hall_control_example_main.c#L263
-STATIC void gen_action_config14(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
+static void gen_action_config14(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb, mcpwm_cmpr_handle_t cmpa, mcpwm_cmpr_handle_t cmpb) {
     check_esp_err(mcpwm_generator_set_action_on_timer_event(gena,
         MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
     check_esp_err(mcpwm_generator_set_action_on_compare_event(gena,
@@ -368,7 +368,7 @@ STATIC void gen_action_config14(mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb
         MCPWM_GEN_BRAKE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_OPER_BRAKE_MODE_CBC, MCPWM_GEN_ACTION_LOW)));
 }
 // +
-STATIC void dead_time_config14(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb) {
+static void dead_time_config14(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena, mcpwm_gen_handle_t genb) {
     mcpwm_dead_time_config_t dead_time_config = {
         .posedge_delay_ticks = self->deadtime_ticks,
         .negedge_delay_ticks = 0,
@@ -381,132 +381,132 @@ STATIC void dead_time_config14(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena,
     check_esp_err(mcpwm_generator_set_dead_time(genb, genb, &dead_time_config));
 }
 
-STATIC void esp32_mcpwm_motor_force_10(esp32_mcpwm_obj_t *self)
+static void esp32_mcpwm_motor_force_10(esp32_mcpwm_obj_t *self)
 {
     // because gen_low is inverted by dead time module, so we need to set force level to 1 and get 0
     check_esp_err(mcpwm_generator_set_force_level(self->genb, 1, true));
     check_esp_err(mcpwm_generator_set_force_level(self->gena, -1, true));
 }
 
-STATIC void esp32_mcpwm_motor_force0_1(esp32_mcpwm_obj_t *self)
+static void esp32_mcpwm_motor_force0_1(esp32_mcpwm_obj_t *self)
 {
     check_esp_err(mcpwm_generator_set_force_level(self->gena, 0, true));
     check_esp_err(mcpwm_generator_set_force_level(self->genb, -1, true));
 }
 /*
-STATIC void esp32_mcpwm_motor_coast(esp32_mcpwm_obj_t *self)
+static void esp32_mcpwm_motor_coast(esp32_mcpwm_obj_t *self)
 {
     check_esp_err(mcpwm_generator_set_force_level(self->gena, 0, true));
     check_esp_err(mcpwm_generator_set_force_level(self->genb, 0, true));
 }
 
-STATIC void esp32_mcpwm_motor_brake(esp32_mcpwm_obj_t *self)
+static void esp32_mcpwm_motor_brake(esp32_mcpwm_obj_t *self)
 {
     check_esp_err(mcpwm_generator_set_force_level(self->gena, 1, true));
     check_esp_err(mcpwm_generator_set_force_level(self->genb, 1, true));
 }
 */
-STATIC void esp32_mcpwm_motor_force00(esp32_mcpwm_obj_t *self)
+static void esp32_mcpwm_motor_force00(esp32_mcpwm_obj_t *self)
 {
     check_esp_err(mcpwm_generator_set_force_level(self->gena, 0, true));
     // because gen_low is inverted by dead time module, so we need to set force level to 1 and get 0
     check_esp_err(mcpwm_generator_set_force_level(self->genb, 1, true));
 }
 
-STATIC void esp32_mcpwm_motor_force10(esp32_mcpwm_obj_t *self)
+static void esp32_mcpwm_motor_force10(esp32_mcpwm_obj_t *self)
 {
     check_esp_err(mcpwm_generator_set_force_level(self->gena, 1, true));
     // because gen_low is inverted by dead time module, so we need to set force level to 1 and get 0
     check_esp_err(mcpwm_generator_set_force_level(self->genb, 1, true));
 }
 
-STATIC void esp32_mcpwm_motor_force01(esp32_mcpwm_obj_t *self)
+static void esp32_mcpwm_motor_force01(esp32_mcpwm_obj_t *self)
 {
     check_esp_err(mcpwm_generator_set_force_level(self->gena, 0, true));
     // because gen_low is inverted by dead time module, so we need to set force level to 0 and get 1
     check_esp_err(mcpwm_generator_set_force_level(self->genb, 0, true));
 }
 
-STATIC void esp32_mcpwm_motor_force_1_1(esp32_mcpwm_obj_t *self)
+static void esp32_mcpwm_motor_force_1_1(esp32_mcpwm_obj_t *self)
 {
     check_esp_err(mcpwm_generator_set_force_level(self->gena, -1, true));
     check_esp_err(mcpwm_generator_set_force_level(self->genb, -1, true));
 }
 
-STATIC mp_obj_t mcpwm_force00(mp_obj_t self) {
+static mp_obj_t mcpwm_force00(mp_obj_t self) {
     esp32_mcpwm_motor_force00(self);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_force00_obj, mcpwm_force00);
+static MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_force00_obj, mcpwm_force00);
 
-STATIC mp_obj_t mcpwm_force10(mp_obj_t self) {
+static mp_obj_t mcpwm_force10(mp_obj_t self) {
     esp32_mcpwm_motor_force10(self);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_force10_obj, mcpwm_force10);
+static MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_force10_obj, mcpwm_force10);
 
-STATIC mp_obj_t mcpwm_force01(mp_obj_t self) {
+static mp_obj_t mcpwm_force01(mp_obj_t self) {
     esp32_mcpwm_motor_force01(self);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_force01_obj, mcpwm_force01);
+static MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_force01_obj, mcpwm_force01);
 
-STATIC mp_obj_t mcpwm_force_1_1(mp_obj_t self) {
+static mp_obj_t mcpwm_force_1_1(mp_obj_t self) {
     esp32_mcpwm_motor_force_1_1(self);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_force_1_1_obj, mcpwm_force_1_1);
+static MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_force_1_1_obj, mcpwm_force_1_1);
 
-STATIC mp_obj_t mcpwm_force_10(mp_obj_t self) {
+static mp_obj_t mcpwm_force_10(mp_obj_t self) {
     esp32_mcpwm_motor_force_10(self);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_force_10_obj, mcpwm_force_10);
+static MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_force_10_obj, mcpwm_force_10);
 
-STATIC mp_obj_t mcpwm_force0_1(mp_obj_t self) {
+static mp_obj_t mcpwm_force0_1(mp_obj_t self) {
     esp32_mcpwm_motor_force0_1(self);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_force0_1_obj, mcpwm_force0_1);
+static MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_force0_1_obj, mcpwm_force0_1);
 /*
-STATIC mp_obj_t mcpwm_coast(mp_obj_t self) {
+static mp_obj_t mcpwm_coast(mp_obj_t self) {
     esp32_mcpwm_motor_coast(self);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_coast_obj, mcpwm_coast);
+static MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_coast_obj, mcpwm_coast);
 
-STATIC mp_obj_t mcpwm_brake(mp_obj_t self) {
+static mp_obj_t mcpwm_brake(mp_obj_t self) {
     esp32_mcpwm_motor_brake(self);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_brake_obj, mcpwm_brake);
+static MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_brake_obj, mcpwm_brake);
 */
-STATIC void esp32_mcpwm_set_compare_value(esp32_mcpwm_obj_t *self, uint32_t compare_value) {
+static void esp32_mcpwm_set_compare_value(esp32_mcpwm_obj_t *self, uint32_t compare_value) {
     check_esp_err(mcpwm_comparator_set_compare_value(self->cmpa, compare_value));
     check_esp_err(mcpwm_comparator_set_compare_value(self->cmpb, compare_value));
 }
 
-STATIC void esp32_mcpwm_enable(esp32_mcpwm_obj_t *self) {
+static void esp32_mcpwm_enable(esp32_mcpwm_obj_t *self) {
     check_esp_err(mcpwm_timer_enable(self->timer));
     check_esp_err(mcpwm_timer_start_stop(self->timer, MCPWM_TIMER_START_NO_STOP));
 }
 
-STATIC void esp32_mcpwm_disable(esp32_mcpwm_obj_t *self) {
+static void esp32_mcpwm_disable(esp32_mcpwm_obj_t *self) {
     check_esp_err(mcpwm_timer_start_stop(self->timer, MCPWM_TIMER_STOP_EMPTY));
     check_esp_err(mcpwm_timer_disable(self->timer));
 }
 
-STATIC mp_obj_t mcpwm_resume(mp_obj_t self) {
+static mp_obj_t mcpwm_resume(mp_obj_t self) {
     esp32_mcpwm_enable(self);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_resume_obj, mcpwm_resume);
+static MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_resume_obj, mcpwm_resume);
 
-STATIC mp_obj_t mcpwm_pause(mp_obj_t self) {
+static mp_obj_t mcpwm_pause(mp_obj_t self) {
     esp32_mcpwm_disable(self);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_pause_obj, mcpwm_pause);
+static MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_pause_obj, mcpwm_pause);
 
 // FREQ
 
@@ -518,7 +518,7 @@ uint32_t mcpwm_get_frequency(esp32_mcpwm_obj_t *self) {
     return self->pwm_freq_hz;
 }
 
-STATIC mp_obj_t mcpwm_freq(size_t n_args, const mp_obj_t *args) {
+static mp_obj_t mcpwm_freq(size_t n_args, const mp_obj_t *args) {
     esp32_mcpwm_obj_t *self = MP_OBJ_TO_PTR(args[0]);
     if (n_args == 1) {
         return MP_OBJ_NEW_SMALL_INT(mcpwm_get_frequency(self));
@@ -526,12 +526,12 @@ STATIC mp_obj_t mcpwm_freq(size_t n_args, const mp_obj_t *args) {
     mcpwm_set_frequency(self, mp_obj_get_int(args[1]));
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mcpwm_freq_obj, 1, 2, mcpwm_freq);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mcpwm_freq_obj, 1, 2, mcpwm_freq);
 
 // DUTY
 
 // Utility functions for decoding and converting
-STATIC uint32_t duty_ns_to_duty_u16(uint32_t freq, uint32_t duty_ns) {
+static uint32_t duty_ns_to_duty_u16(uint32_t freq, uint32_t duty_ns) {
     uint64_t duty_u16 = ((uint64_t)duty_ns * freq * PWM_FULL_SCALE + 500000000ULL) / 1000000000ULL;
     if (duty_u16 > PWM_FULL_SCALE) {
         mp_raise_ValueError(MP_ERROR_TEXT(ERRMSG_VALUE));
@@ -539,12 +539,12 @@ STATIC uint32_t duty_ns_to_duty_u16(uint32_t freq, uint32_t duty_ns) {
     return (uint32_t)duty_u16;
 }
 
-STATIC uint32_t duty_u16_to_duty_ns(uint32_t freq, uint32_t duty_u16) {
+static uint32_t duty_u16_to_duty_ns(uint32_t freq, uint32_t duty_u16) {
     uint64_t duty_ns = 1000000000ULL * duty_u16 / ((uint64_t)freq * PWM_FULL_SCALE);
     return (uint32_t)duty_ns;
 }
 
-STATIC void mcpwm_set_duty(esp32_mcpwm_obj_t *self) {
+static void mcpwm_set_duty(esp32_mcpwm_obj_t *self) {
     uint32_t compare_value = (self->duty_u16 * self->period_ticks + PWM_FULL_SCALE / 2) / PWM_FULL_SCALE;
     esp32_mcpwm_set_compare_value(self, compare_value);
 }
@@ -553,7 +553,7 @@ int32_t mcpwm_get_duty(esp32_mcpwm_obj_t *self) {
     return self->duty_ns != VALUE_NOT_SET ? self->duty_ns : self->duty_u16;
 }
 
-STATIC mp_obj_t mcpwm_duty_u16(size_t n_args, const mp_obj_t *args) {
+static mp_obj_t mcpwm_duty_u16(size_t n_args, const mp_obj_t *args) {
     esp32_mcpwm_obj_t *self = MP_OBJ_TO_PTR(args[0]);
     if (n_args == 1) {
         return MP_OBJ_NEW_SMALL_INT(self->duty_u16);
@@ -563,9 +563,9 @@ STATIC mp_obj_t mcpwm_duty_u16(size_t n_args, const mp_obj_t *args) {
     mcpwm_set_duty(self);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mcpwm_duty_u16_obj, 1, 2, mcpwm_duty_u16);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mcpwm_duty_u16_obj, 1, 2, mcpwm_duty_u16);
 
-STATIC mp_obj_t mcpwm_duty_ns(size_t n_args, const mp_obj_t *args) {
+static mp_obj_t mcpwm_duty_ns(size_t n_args, const mp_obj_t *args) {
     esp32_mcpwm_obj_t *self = MP_OBJ_TO_PTR(args[0]);
     if (n_args == 1) {
         if (self->duty_ns != VALUE_NOT_SET) {
@@ -579,9 +579,9 @@ STATIC mp_obj_t mcpwm_duty_ns(size_t n_args, const mp_obj_t *args) {
     mcpwm_set_duty(self);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mcpwm_duty_ns_obj, 1, 2, mcpwm_duty_ns);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mcpwm_duty_ns_obj, 1, 2, mcpwm_duty_ns);
 
-STATIC void configure_mcpwm(esp32_mcpwm_obj_t *self) {
+static void configure_mcpwm(esp32_mcpwm_obj_t *self) {
     MP_DEBUG_PRINT(6, "configure_mcpwm() group_id=%d resolution_hz=%d period_ticks=%d action=%d", self->group_id, self->resolution_hz, self->period_ticks, self->action);
     DEBUG_printf("configure_mcpwm() group_id=%d resolution_hz=%d period_ticks=%d action=%d\n", self->group_id, self->resolution_hz, self->period_ticks, self->action);
 
@@ -674,7 +674,7 @@ STATIC void configure_mcpwm(esp32_mcpwm_obj_t *self) {
     esp32_mcpwm_enable(self);
 }
 
-STATIC void mp_esp32_mcpwm_init_helper(esp32_mcpwm_obj_t *self,
+static void mp_esp32_mcpwm_init_helper(esp32_mcpwm_obj_t *self,
     size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     MP_DEBUG_PRINT(6, "mp_esp32_mcpwm_init_helper() n_args=%d", n_args);
     enum { ARG_freq, ARG_duty_u16, ARG_duty_ns, ARG_center, ARG_align,
@@ -758,7 +758,7 @@ STATIC void mp_esp32_mcpwm_init_helper(esp32_mcpwm_obj_t *self,
     }
 }
 
-STATIC mp_obj_t mcpwm_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+static mp_obj_t mcpwm_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     MP_DEBUG_PRINT(6, "mcpwm_make_new() n_args=%d, n_kw=%d", n_args, n_kw);
     mp_arg_check_num(n_args, n_kw, 1, 3, true);
 
@@ -798,7 +798,7 @@ STATIC mp_obj_t mcpwm_make_new(const mp_obj_type_t *type, size_t n_args, size_t 
 }
 
 // BIND
-STATIC mp_obj_t _mcpwm_bind(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+static mp_obj_t _mcpwm_bind(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_complementary_pin };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_pin_complementary, MP_ARG_INT, {.u_int = -1} },
@@ -816,10 +816,10 @@ STATIC mp_obj_t _mcpwm_bind(size_t n_args, const mp_obj_t *pos_args, mp_map_t *k
 
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mcpwm_bind_obj, 1, _mcpwm_bind);
+static MP_DEFINE_CONST_FUN_OBJ_KW(mcpwm_bind_obj, 1, _mcpwm_bind);
 
 // DEINIT
-STATIC mp_obj_t mcpwm_deinit(mp_obj_t self_in) {
+static mp_obj_t mcpwm_deinit(mp_obj_t self_in) {
     esp32_mcpwm_obj_t *self = MP_OBJ_TO_PTR(self_in);
     esp32_mcpwm_disable(self);
     check_esp_err(mcpwm_generator_set_force_level(self->gena, 0, true));
@@ -847,9 +847,9 @@ STATIC mp_obj_t mcpwm_deinit(mp_obj_t self_in) {
     m_del_obj(esp32_mcpwm_obj_t, self); // ???
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_deinit_obj, mcpwm_deinit);
+static MP_DEFINE_CONST_FUN_OBJ_1(mcpwm_deinit_obj, mcpwm_deinit);
 
-STATIC void mcpwm_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
+static void mcpwm_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     esp32_mcpwm_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_printf(print, "MCPWM(%u, ", self->id);
     if (self->pwmb_gpio_num >= 0) {
@@ -872,7 +872,7 @@ STATIC void mcpwm_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind
     mp_printf(print, ")");
 }
 
-STATIC const mp_rom_map_elem_t mcpwm_locals_dict_table[] = {
+static const mp_rom_map_elem_t mcpwm_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_bind), MP_ROM_PTR(&mcpwm_bind_obj) },
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&mcpwm_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR_duty_u16), MP_ROM_PTR(&mcpwm_duty_u16_obj) },
@@ -891,7 +891,7 @@ STATIC const mp_rom_map_elem_t mcpwm_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_force01), MP_ROM_PTR(&mcpwm_force01_obj) },
     { MP_ROM_QSTR(MP_QSTR_force_1_1), MP_ROM_PTR(&mcpwm_force_1_1_obj) },
 };
-STATIC MP_DEFINE_CONST_DICT(mcpwm_locals_dict, mcpwm_locals_dict_table);
+static MP_DEFINE_CONST_DICT(mcpwm_locals_dict, mcpwm_locals_dict_table);
 
 MP_DEFINE_CONST_OBJ_TYPE(
     esp32_mcpwm_type,
