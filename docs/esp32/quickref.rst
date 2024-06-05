@@ -352,6 +352,7 @@ Use the DAC::
 
     dac = DAC(Pin(25))  # create an DAC object acting on a pin
     dac.write(128)      # set a raw analog value in the range 0-255, 50% now
+
 MCPWM (motor control pulse width modulation)
 --------------------------------------------
 
