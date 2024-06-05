@@ -381,54 +381,46 @@ static void dead_time_config14(esp32_mcpwm_obj_t *self, mcpwm_gen_handle_t gena,
     check_esp_err(mcpwm_generator_set_dead_time(genb, genb, &dead_time_config));
 }
 
-static void esp32_mcpwm_motor_force_10(esp32_mcpwm_obj_t *self)
-{
+static void esp32_mcpwm_motor_force_10(esp32_mcpwm_obj_t *self) {
     // because gen_low is inverted by dead time module, so we need to set force level to 1 and get 0
     check_esp_err(mcpwm_generator_set_force_level(self->genb, 1, true));
     check_esp_err(mcpwm_generator_set_force_level(self->gena, -1, true));
 }
 
-static void esp32_mcpwm_motor_force0_1(esp32_mcpwm_obj_t *self)
-{
+static void esp32_mcpwm_motor_force0_1(esp32_mcpwm_obj_t *self) {
     check_esp_err(mcpwm_generator_set_force_level(self->gena, 0, true));
     check_esp_err(mcpwm_generator_set_force_level(self->genb, -1, true));
 }
 /*
-static void esp32_mcpwm_motor_coast(esp32_mcpwm_obj_t *self)
-{
+static void esp32_mcpwm_motor_coast(esp32_mcpwm_obj_t *self) {
     check_esp_err(mcpwm_generator_set_force_level(self->gena, 0, true));
     check_esp_err(mcpwm_generator_set_force_level(self->genb, 0, true));
 }
 
-static void esp32_mcpwm_motor_brake(esp32_mcpwm_obj_t *self)
-{
+static void esp32_mcpwm_motor_brake(esp32_mcpwm_obj_t *self) {
     check_esp_err(mcpwm_generator_set_force_level(self->gena, 1, true));
     check_esp_err(mcpwm_generator_set_force_level(self->genb, 1, true));
 }
 */
-static void esp32_mcpwm_motor_force00(esp32_mcpwm_obj_t *self)
-{
+static void esp32_mcpwm_motor_force00(esp32_mcpwm_obj_t *self) {
     check_esp_err(mcpwm_generator_set_force_level(self->gena, 0, true));
     // because gen_low is inverted by dead time module, so we need to set force level to 1 and get 0
     check_esp_err(mcpwm_generator_set_force_level(self->genb, 1, true));
 }
 
-static void esp32_mcpwm_motor_force10(esp32_mcpwm_obj_t *self)
-{
+static void esp32_mcpwm_motor_force10(esp32_mcpwm_obj_t *self) {
     check_esp_err(mcpwm_generator_set_force_level(self->gena, 1, true));
     // because gen_low is inverted by dead time module, so we need to set force level to 1 and get 0
     check_esp_err(mcpwm_generator_set_force_level(self->genb, 1, true));
 }
 
-static void esp32_mcpwm_motor_force01(esp32_mcpwm_obj_t *self)
-{
+static void esp32_mcpwm_motor_force01(esp32_mcpwm_obj_t *self) {
     check_esp_err(mcpwm_generator_set_force_level(self->gena, 0, true));
     // because gen_low is inverted by dead time module, so we need to set force level to 0 and get 1
     check_esp_err(mcpwm_generator_set_force_level(self->genb, 0, true));
 }
 
-static void esp32_mcpwm_motor_force_1_1(esp32_mcpwm_obj_t *self)
-{
+static void esp32_mcpwm_motor_force_1_1(esp32_mcpwm_obj_t *self) {
     check_esp_err(mcpwm_generator_set_force_level(self->gena, -1, true));
     check_esp_err(mcpwm_generator_set_force_level(self->genb, -1, true));
 }
