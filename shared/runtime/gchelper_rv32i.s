@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2022 Ibrahim Abdelkader <iabdalkader@openmv.io>
+ * Copyright (c) 2024 Alessandro Gatti
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,37 +24,29 @@
  * THE SOFTWARE.
  */
 
-#include "py/runtime.h"
-#include "py/mphal.h"
-#include "extmod/modmachine.h"
+    .global gc_helper_get_regs_and_sp
+    .type   gc_helper_get_regs_and_sp, @function
 
-#if MICROPY_HW_USB_CDC_1200BPS_TOUCH && MICROPY_HW_ENABLE_USBDEV
+gc_helper_get_regs_and_sp:
 
-#include "tusb.h"
+    /* Store registers into the given array. */
 
-static mp_sched_node_t mp_bootloader_sched_node;
+    sw    x8,  0(x10)  /* Save S0.  */
+    sw    x9,  4(x10)  /* Save S1.  */
+    sw   x18,  8(x10)  /* Save S2.  */
+    sw   x19, 12(x10)  /* Save S3.  */
+    sw   x20, 16(x10)  /* Save S4.  */
+    sw   x21, 20(x10)  /* Save S5.  */
+    sw   x22, 24(x10)  /* Save S6.  */
+    sw   x23, 28(x10)  /* Save S7.  */
+    sw   x24, 32(x10)  /* Save S8.  */
+    sw   x25, 36(x10)  /* Save S9.  */
+    sw   x26, 40(x10)  /* Save S10. */
+    sw   x27, 44(x10)  /* Save S11. */
 
-static void usbd_cdc_run_bootloader_task(mp_sched_node_t *node) {
-    mp_hal_delay_ms(250);
-    machine_bootloader(0, NULL);
-}
+    /* Return the stack pointer. */
 
-void
-#if MICROPY_HW_USB_EXTERNAL_TINYUSB
-mp_usbd_line_state_cb
-#else
-tud_cdc_line_state_cb
-#endif
-    (uint8_t itf, bool dtr, bool rts) {
-    if (dtr == false && rts == false) {
-        // Device is disconnected.
-        cdc_line_coding_t line_coding;
-        tud_cdc_n_get_line_coding(itf, &line_coding);
-        if (line_coding.bit_rate == 1200) {
-            // Delay bootloader jump to allow the USB stack to service endpoints.
-            mp_sched_schedule_node(&mp_bootloader_sched_node, usbd_cdc_run_bootloader_task);
-        }
-    }
-}
+    add  x10, x0, x2
+    jalr  x0, x1, 0
 
-#endif
+    .size gc_helper_get_regs_and_sp, .-gc_helper_get_regs_and_sp
