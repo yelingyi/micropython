@@ -45,10 +45,10 @@ ${WASM_OPT} \
 # Convert to the latest version of EH proposal with exnref.
 ${WASM_OPT} \
 --translate-to-exnref --enable-exception-handling \
--o ${PROG}.spilled.neweh ${PROG}.spilled
+-o ${PROG}.spilled.exnref ${PROG}.spilled
 
 # now you can run it with EH-enabled runtimes.
 # eg.  (using the latest EH)
-# toywasm --wasi build-wasi/micropython.spilled.neweh
+# toywasm --wasi build-wasi/micropython.spilled.exnref
 # eg.  (using the old EH)
 # iwasm build-wasi/micropython.spilled
