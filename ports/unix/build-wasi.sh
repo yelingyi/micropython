@@ -35,8 +35,8 @@ VARIANT=wasi \
 
 PROG=build-wasi/micropython
 
-# We doesn't have a way to scan GC roots like WASM locals.
-# Hopefully --spill-pointers can workaround it.
+# Unlike emscripten, WASI doesn't provide a way to scan GC roots
+# like WASM locals. Hopefully --spill-pointers can workaround it.
 ${WASM_OPT} \
 --spill-pointers \
 -o ${PROG}.spilled ${PROG}
