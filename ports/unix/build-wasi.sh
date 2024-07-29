@@ -13,6 +13,12 @@
 # WASI_SYSROOT: sysroot from wasi-sdk 22.0 or later
 # CLANG: clang from LLVM 19 or later, which contains the above mentioned PR
 
+# REVISIT:
+# we specify the target "--target=wasm32-wasi" explicitly below for the case
+# where $CLANG is built with a configuration different from wasi-sdk.
+# it can be simplified once LLVM 19 becomes a part of wasi-sdk.
+# ditto for "-B ${WASI_SDK}/bin/".
+
 WASI_SDK=${WASI_SDK:-/opt/wasi-sdk-22.0}
 WASI_SYSROOT=${WASI_SYSROOT:-${WASI_SDK}/share/wasi-sysroot}
 BINARYEN_BIN=${BINARYEN_BIN:-${HOME}/git/wasm/binaryen/b/bin}
