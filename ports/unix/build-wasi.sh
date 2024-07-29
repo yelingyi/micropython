@@ -23,10 +23,9 @@ CLANG=${CLANG:-${LLVM_BUILD_DIR}/bin/clang}
 CC="${CLANG} --sysroot ${WASI_SYSROOT} -resource-dir ${RESOURCE_DIR}"
 
 CFLAGS="-D_WASI_EMULATED_PROCESS_CLOCKS -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_MMAN -mllvm -wasm-enable-sjlj" \
-LDFLAGS="-lwasi-emulated-process-clocks -lwasi-emulated-signal -lwasi-emulated-mman -lsetjmp" \
+LDFLAGS="-lwasi-emulated-process-clocks -lwasi-emulated-signal -lwasi-emulated-mman -lsetjmp -B ${WASI_SDK}/bin/" \
 make \
 CC="${CC}" \
-LD="${WASI_SDK}/bin/wasm-ld" \
 STRIP="${WASI_SDK}/bin/strip" \
 SIZE="${WASI_SDK}/bin/size" \
 UNAME_S=wasi \
