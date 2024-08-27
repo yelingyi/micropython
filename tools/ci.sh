@@ -6,6 +6,9 @@ else
     MAKEOPTS="-j$(sysctl -n hw.ncpu)"
 fi
 
+# Ensure known OPEN_MAX (NO_FILES) limit.
+ulimit -n 1024
+
 ########################################################################################
 # general helper functions
 
@@ -14,29 +17,22 @@ function ci_gcc_arm_setup {
     arm-none-eabi-gcc --version
 }
 
-########################################################################################
-# code formatting
+function ci_gcc_riscv_setup {
+    sudo apt-get install gcc-riscv64-unknown-elf picolibc-riscv64-unknown-elf
+    riscv64-unknown-elf-gcc --version
+}
 
-function ci_code_formatting_setup {
+########################################################################################
+# c code formatting
+
+function ci_c_code_formatting_setup {
     sudo apt-get install uncrustify
-    pip3 install black
     uncrustify --version
-    black --version
 }
 
-function ci_code_formatting_run {
-    tools/codeformat.py -v
-}
-
-########################################################################################
-# code spelling
-
-function ci_code_spell_setup {
-    pip3 install codespell tomli
-}
-
-function ci_code_spell_run {
-    codespell
+function ci_c_code_formatting_run {
+    # Only run on C files. The ruff rule runs separately on Python.
+    tools/codeformat.py -v -c
 }
 
 ########################################################################################
@@ -44,7 +40,9 @@ function ci_code_spell_run {
 
 function ci_commit_formatting_run {
     git remote add upstream https://github.com/micropython/micropython.git
-    git fetch --depth=100 upstream  master
+    git fetch --depth=100 upstream master
+    # If the common ancestor commit hasn't been found, fetch more.
+    git merge-base upstream/master HEAD || git fetch --unshallow upstream master
     # For a PR, upstream/master..HEAD ends with a merge commit into master, exclude that one.
     tools/verifygitlog.py -v upstream/master..HEAD --no-merges
 }
@@ -62,12 +60,14 @@ function ci_code_size_setup {
 function ci_code_size_build {
     # check the following ports for the change in their code size
     PORTS_TO_CHECK=bmusxpd
-    SUBMODULES="lib/asf4 lib/berkeley-db-1.xx lib/mbedtls lib/micropython-lib lib/nxp_driver lib/pico-sdk lib/stm32lib lib/tinyusb"
+    SUBMODULES="lib/asf4 lib/berkeley-db-1.xx lib/btstack lib/cyw43-driver lib/lwip lib/mbedtls lib/micropython-lib lib/nxp_driver lib/pico-sdk lib/stm32lib lib/tinyusb"
 
     # starts off at either the ref/pull/N/merge FETCH_HEAD, or the current branch HEAD
     git checkout -b pull_request # save the current location
     git remote add upstream https://github.com/micropython/micropython.git
     git fetch --depth=100 upstream master
+    # If the common ancestor commit hasn't been found, fetch more.
+    git merge-base upstream/master HEAD || git fetch --unshallow upstream master
     # build reference, save to size0
     # ignore any errors with this build, in case master is failing
     git checkout `git merge-base --fork-point upstream/master pull_request`
@@ -115,26 +115,45 @@ function ci_cc3200_build {
 ########################################################################################
 # ports/esp32
 
-function ci_esp32_idf50_setup {
+# GitHub tag of ESP-IDF to use for CI (note: must be a tag or a branch)
+IDF_VER=v5.2.2
+
+export IDF_CCACHE_ENABLE=1
+
+function ci_esp32_idf_setup {
     pip3 install pyelftools
-    git clone https://github.com/espressif/esp-idf.git
-    git -C esp-idf checkout v5.0.2
+    git clone --depth 1 --branch $IDF_VER https://github.com/espressif/esp-idf.git
+    # doing a treeless clone isn't quite as good as --shallow-submodules, but it
+    # is smaller than full clones and works when the submodule commit isn't a head.
+    git -C esp-idf submodule update --init --recursive --filter=tree:0
     ./esp-idf/install.sh
 }
 
-function ci_esp32_build {
+function ci_esp32_build_common {
     source esp-idf/export.sh
     make ${MAKEOPTS} -C mpy-cross
     make ${MAKEOPTS} -C ports/esp32 submodules
+}
+
+function ci_esp32_build_cmod_spiram_s2 {
+    ci_esp32_build_common
+
     make ${MAKEOPTS} -C ports/esp32 \
         USER_C_MODULES=../../../examples/usercmodule/micropython.cmake \
         FROZEN_MANIFEST=$(pwd)/ports/esp32/boards/manifest_test.py
-    make ${MAKEOPTS} -C ports/esp32 BOARD=ESP32_GENERIC_C3
-    make ${MAKEOPTS} -C ports/esp32 BOARD=ESP32_GENERIC_S2
-    make ${MAKEOPTS} -C ports/esp32 BOARD=ESP32_GENERIC_S3
 
     # Test building native .mpy with xtensawin architecture.
     ci_native_mpy_modules_build xtensawin
+
+    make ${MAKEOPTS} -C ports/esp32 BOARD=ESP32_GENERIC BOARD_VARIANT=SPIRAM
+    make ${MAKEOPTS} -C ports/esp32 BOARD=ESP32_GENERIC_S2
+}
+
+function ci_esp32_build_s3_c3 {
+    ci_esp32_build_common
+
+    make ${MAKEOPTS} -C ports/esp32 BOARD=ESP32_GENERIC_S3
+    make ${MAKEOPTS} -C ports/esp32 BOARD=ESP32_GENERIC_C3
 }
 
 ########################################################################################
@@ -164,18 +183,19 @@ function ci_esp8266_build {
 # ports/webassembly
 
 function ci_webassembly_setup {
+    npm install terser
     git clone https://github.com/emscripten-core/emsdk.git
     (cd emsdk && ./emsdk install latest && ./emsdk activate latest)
 }
 
 function ci_webassembly_build {
     source emsdk/emsdk_env.sh
-    make ${MAKEOPTS} -C ports/webassembly
+    make ${MAKEOPTS} -C ports/webassembly VARIANT=pyscript submodules
+    make ${MAKEOPTS} -C ports/webassembly VARIANT=pyscript
 }
 
 function ci_webassembly_run_tests {
-    # This port is very slow at running, so only run a few of the tests.
-    (cd tests && MICROPY_MICROPYTHON=../ports/webassembly/node_run.sh ./run-tests.py -j1 basics/builtin_*.py)
+    make -C ports/webassembly VARIANT=pyscript test_min
 }
 
 ########################################################################################
@@ -242,6 +262,25 @@ function ci_qemu_arm_build {
     make ${MAKEOPTS} -C ports/qemu-arm -f Makefile.test test
     make ${MAKEOPTS} -C ports/qemu-arm -f Makefile.test clean
     make ${MAKEOPTS} -C ports/qemu-arm -f Makefile.test BOARD=sabrelite test
+}
+
+########################################################################################
+# ports/qemu-riscv
+
+function ci_qemu_riscv_setup {
+    ci_gcc_riscv_setup
+    sudo apt-get update
+    sudo apt-get install qemu-system
+    qemu-system-riscv32 --version
+}
+
+function ci_qemu_riscv_build {
+    make ${MAKEOPTS} -C mpy-cross
+    make ${MAKEOPTS} -C ports/qemu-riscv submodules
+    make ${MAKEOPTS} -C ports/qemu-riscv
+    make ${MAKEOPTS} -C ports/qemu-riscv clean
+    make ${MAKEOPTS} -C ports/qemu-riscv -f Makefile.test submodules
+    make ${MAKEOPTS} -C ports/qemu-riscv -f Makefile.test test
 }
 
 ########################################################################################
@@ -316,7 +355,7 @@ function ci_stm32_pyb_build {
     git submodule update --init lib/mynewt-nimble
     make ${MAKEOPTS} -C ports/stm32 BOARD=PYBV11 MICROPY_PY_NETWORK_WIZNET5K=5200 USER_C_MODULES=../../examples/usercmodule
     make ${MAKEOPTS} -C ports/stm32 BOARD=PYBD_SF2
-    make ${MAKEOPTS} -C ports/stm32 BOARD=PYBD_SF6 NANBOX=1 MICROPY_BLUETOOTH_NIMBLE=0 MICROPY_BLUETOOTH_BTSTACK=1
+    make ${MAKEOPTS} -C ports/stm32 BOARD=PYBD_SF6 COPT=-O2 NANBOX=1 MICROPY_BLUETOOTH_NIMBLE=0 MICROPY_BLUETOOTH_BTSTACK=1
     make ${MAKEOPTS} -C ports/stm32/mboot BOARD=PYBV10 CFLAGS_EXTRA='-DMBOOT_FSLOAD=1 -DMBOOT_VFS_LFS2=1'
     make ${MAKEOPTS} -C ports/stm32/mboot BOARD=PYBD_SF6
     make ${MAKEOPTS} -C ports/stm32/mboot BOARD=STM32F769DISC CFLAGS_EXTRA='-DMBOOT_ADDRESS_SPACE_64BIT=1 -DMBOOT_SDCARD_ADDR=0x100000000ULL -DMBOOT_SDCARD_BYTE_SIZE=0x400000000ULL -DMBOOT_FSLOAD=1 -DMBOOT_VFS_FAT=1'
@@ -352,17 +391,10 @@ function ci_stm32_nucleo_build {
     diff $BUILD_WB55/firmware.unpack.dfu $BUILD_WB55/firmware.unpack_no_sk.dfu
 }
 
-########################################################################################
-# ports/teensy
-
-function ci_teensy_setup {
-    ci_gcc_arm_setup
-}
-
-function ci_teensy_build {
+function ci_stm32_misc_build {
     make ${MAKEOPTS} -C mpy-cross
-    make ${MAKEOPTS} -C ports/teensy submodules
-    make ${MAKEOPTS} -C ports/teensy
+    make ${MAKEOPTS} -C ports/stm32 BOARD=ARDUINO_GIGA submodules
+    make ${MAKEOPTS} -C ports/stm32 BOARD=ARDUINO_GIGA
 }
 
 ########################################################################################
@@ -395,6 +427,11 @@ CI_UNIX_OPTS_QEMU_ARM=(
     MICROPY_STANDALONE=1
 )
 
+CI_UNIX_OPTS_QEMU_RISCV64=(
+    CROSS_COMPILE=riscv64-linux-gnu-
+    VARIANT=coverage
+)
+
 function ci_unix_build_helper {
     make ${MAKEOPTS} -C mpy-cross
     make ${MAKEOPTS} -C ports/unix "$@" submodules
@@ -403,7 +440,7 @@ function ci_unix_build_helper {
 }
 
 function ci_unix_build_ffi_lib_helper {
-    $1 $2 -shared -o tests/unix/ffi_lib.so tests/unix/ffi_lib.c
+    $1 $2 -shared -o tests/ports/unix/ffi_lib.so tests/ports/unix/ffi_lib.c
 }
 
 function ci_unix_run_tests_helper {
@@ -458,6 +495,15 @@ function ci_unix_standard_run_tests {
     ci_unix_run_tests_full_helper standard
 }
 
+function ci_unix_standard_v2_build {
+    ci_unix_build_helper VARIANT=standard MICROPY_PREVIEW_VERSION_2=1
+    ci_unix_build_ffi_lib_helper gcc
+}
+
+function ci_unix_standard_v2_run_tests {
+    ci_unix_run_tests_full_helper standard
+}
+
 function ci_unix_coverage_setup {
     sudo pip3 install setuptools
     sudo pip3 install pyelftools
@@ -500,7 +546,7 @@ function ci_unix_coverage_run_mpy_merge_tests {
 
 function ci_unix_coverage_run_native_mpy_tests {
     MICROPYPATH=examples/natmod/features2 ./ports/unix/build-coverage/micropython -m features2
-    (cd tests && ./run-natmodtests.py "$@" extmod/{btree*,deflate*,framebuf*,heapq*,random*,re*}.py)
+    (cd tests && ./run-natmodtests.py "$@" extmod/*.py)
 }
 
 function ci_unix_32bit_setup {
@@ -606,9 +652,9 @@ function ci_unix_macos_build {
 
 function ci_unix_macos_run_tests {
     # Issues with macOS tests:
-    # - import_pkg7 has a problem with relative imports
-    # - random_basic has a problem with getrandbits(0)
-    (cd tests && MICROPY_MICROPYTHON=../ports/unix/build-standard/micropython ./run-tests.py --exclude 'import_pkg7.py' --exclude 'random_basic.py')
+    # - float_parse and float_parse_doubleprec parse/print floats out by a few mantissa bits
+    # - ffi_callback crashes for an unknown reason
+    (cd tests && MICROPY_MICROPYTHON=../ports/unix/build-standard/micropython ./run-tests.py --exclude '(float_parse|float_parse_doubleprec|ffi_callback).py')
 }
 
 function ci_unix_qemu_mips_setup {
@@ -649,6 +695,28 @@ function ci_unix_qemu_arm_run_tests {
     export QEMU_LD_PREFIX=/usr/arm-linux-gnueabi
     file ./ports/unix/build-coverage/micropython
     (cd tests && MICROPY_MICROPYTHON=../ports/unix/build-coverage/micropython ./run-tests.py --exclude 'vfs_posix.*\.py')
+}
+
+function ci_unix_qemu_riscv64_setup {
+    . /etc/os-release
+    for repository in "${VERSION_CODENAME}" "${VERSION_CODENAME}-updates" "${VERSION_CODENAME}-security"
+    do
+        sudo add-apt-repository -y -n "deb [arch=riscv64] http://ports.ubuntu.com/ubuntu-ports ${repository} main"
+    done
+    sudo apt-get update
+    sudo dpkg --add-architecture riscv64
+    sudo apt-get install gcc-riscv64-linux-gnu g++-riscv64-linux-gnu libffi-dev:riscv64
+    sudo apt-get install qemu-user
+    qemu-riscv64 --version
+}
+
+function ci_unix_qemu_riscv64_build {
+    ci_unix_build_helper "${CI_UNIX_OPTS_QEMU_RISCV64[@]}"
+}
+
+function ci_unix_qemu_riscv64_run_tests {
+    file ./ports/unix/build-coverage/micropython
+    (cd tests && MICROPY_MICROPYTHON=../ports/unix/build-coverage/micropython ./run-tests.py)
 }
 
 ########################################################################################

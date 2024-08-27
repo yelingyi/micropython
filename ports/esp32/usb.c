@@ -28,7 +28,7 @@
 #include "py/mphal.h"
 #include "usb.h"
 
-#if CONFIG_USB_OTG_SUPPORTED && !CONFIG_ESP_CONSOLE_USB_CDC && !CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+#if CONFIG_USB_OTG_SUPPORTED && !CONFIG_ESP_CONSOLE_USB_CDC && !CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG_ENABLED
 
 #include "esp_timer.h"
 #ifndef NO_QSTR
@@ -40,8 +40,10 @@
 
 static uint8_t usb_rx_buf[CONFIG_TINYUSB_CDC_RX_BUFSIZE];
 
+// This is called from FreeRTOS task "tusb_tsk" in espressif__esp_tinyusb (not an ISR).
 static void usb_callback_rx(int itf, cdcacm_event_t *event) {
-    // TODO: what happens if more chars come in during this function, are they lost?
+    // espressif__esp_tinyusb places tinyusb rx data onto freertos ringbuffer which
+    // this function forwards onto our stdin_ringbuf.
     for (;;) {
         size_t len = 0;
         esp_err_t ret = tinyusb_cdcacm_read(itf, usb_rx_buf, sizeof(usb_rx_buf), &len);
@@ -58,6 +60,7 @@ static void usb_callback_rx(int itf, cdcacm_event_t *event) {
                 ringbuf_put(&stdin_ringbuf, usb_rx_buf[i]);
             }
         }
+        mp_hal_wake_main_task();
     }
 }
 
@@ -76,7 +79,7 @@ void usb_init(void) {
         .callback_rx_wanted_char = &MICROPY_HW_USB_CUSTOM_RX_WANTED_CHAR_CB,
         #endif
         #ifdef MICROPY_HW_USB_CUSTOM_LINE_STATE_CB
-        .callback_line_state_changed = &MICROPY_HW_USB_CUSTOM_LINE_STATE_CB,
+        .callback_line_state_changed = (tusb_cdcacm_callback_t)&MICROPY_HW_USB_CUSTOM_LINE_STATE_CB,
         #endif
         #ifdef MICROPY_HW_USB_CUSTOM_LINE_CODING_CB
         .callback_line_coding_changed = &MICROPY_HW_USB_CUSTOM_LINE_CODING_CB,
@@ -97,4 +100,4 @@ void usb_tx_strn(const char *str, size_t len) {
     }
 }
 
-#endif // CONFIG_USB_OTG_SUPPORTED && !CONFIG_ESP_CONSOLE_USB_CDC && !CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+#endif // CONFIG_USB_OTG_SUPPORTED && !CONFIG_ESP_CONSOLE_USB_CDC && !CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG_ENABLED

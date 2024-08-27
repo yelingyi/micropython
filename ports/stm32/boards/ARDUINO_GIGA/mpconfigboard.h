@@ -4,10 +4,12 @@
  * Copyright (c) 2023 Arduino SA
  */
 
-#define MICROPY_HW_BOARD_NAME       "GIGA"
+#define MICROPY_HW_BOARD_NAME       "Arduino GIGA R1 WiFi"
 #define MICROPY_HW_MCU_NAME         "STM32H747"
-#define MICROPY_PY_SYS_PLATFORM     "Giga"
-#define MICROPY_HW_FLASH_FS_LABEL   "Giga"
+#define MICROPY_HW_FLASH_FS_LABEL   "GIGA R1 WiFi"
+
+// Network config
+#define MICROPY_PY_NETWORK_HOSTNAME_DEFAULT "mpy-giga-r1-wifi"
 
 #define MICROPY_OBJ_REPR            (MICROPY_OBJ_REPR_C)
 #define UINT_FMT                    "%u"
@@ -103,6 +105,12 @@ void GIGA_board_low_power(int mode);
 
 // SMPS configuration
 #define MICROPY_HW_PWR_SMPS_CONFIG      (PWR_LDO_SUPPLY)
+
+// Configure the analog switches for dual-pad pins.
+#define MICROPY_HW_ANALOG_SWITCH_PA0    (SYSCFG_SWITCH_PA0_OPEN)
+#define MICROPY_HW_ANALOG_SWITCH_PA1    (SYSCFG_SWITCH_PA1_OPEN)
+#define MICROPY_HW_ANALOG_SWITCH_PC2    (SYSCFG_SWITCH_PC2_OPEN)
+#define MICROPY_HW_ANALOG_SWITCH_PC3    (SYSCFG_SWITCH_PC3_OPEN)
 
 // There is an external 32kHz oscillator
 #define RTC_ASYNCH_PREDIV           (0)
@@ -218,6 +226,7 @@ extern struct _spi_bdev_t spi_bdev;
 #define MICROPY_HW_SDRAM_SIZE               (64 / 8 * 1024 * 1024)  // 64 Mbit
 #define MICROPY_HW_SDRAM_STARTUP_TEST       (1)
 #define MICROPY_HW_SDRAM_TEST_FAIL_ON_ERROR (true)
+#define MICROPY_HW_FMC_SWAP_BANKS           (1)
 
 // Timing configuration for 200MHz/2=100MHz (10ns)
 #define MICROPY_HW_SDRAM_CLOCK_PERIOD       2

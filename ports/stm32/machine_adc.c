@@ -24,7 +24,9 @@
  * THE SOFTWARE.
  */
 
-#include "py/runtime.h"
+// This file is never compiled standalone, it's included directly from
+// extmod/machine_adc.c via MICROPY_PY_MACHINE_ADC_INCLUDEFILE.
+
 #include "py/mphal.h"
 #include "adc.h"
 
@@ -110,7 +112,7 @@ typedef enum _machine_adc_internal_ch_t {
 
 // Convert machine_adc_internal_ch_t value to STM32 library ADC channel literal.
 // This function is required as literals are uint32_t types that don't map with MP_ROM_INT (31 bit signed).
-STATIC uint32_t adc_ll_channel(uint32_t channel_id) {
+static uint32_t adc_ll_channel(uint32_t channel_id) {
     uint32_t adc_ll_ch;
     switch (channel_id) {
         // external channels map 1:1
@@ -152,7 +154,7 @@ static inline void adc_stabilisation_delay_us(uint32_t us) {
     mp_hal_delay_us(us + 1);
 }
 
-STATIC void adc_wait_eoc(ADC_TypeDef *adc, int32_t timeout_ms) {
+static void adc_wait_eoc(ADC_TypeDef *adc, int32_t timeout_ms) {
     uint32_t t0 = mp_hal_ticks_ms();
     #if ADC_V2
     while (!(adc->ISR & ADC_ISR_EOC))
@@ -167,9 +169,9 @@ STATIC void adc_wait_eoc(ADC_TypeDef *adc, int32_t timeout_ms) {
 }
 
 #if defined(STM32H7)
-STATIC const uint8_t adc_cr_to_bits_table[] = {16, 14, 12, 10, 8, 8, 8, 8};
+static const uint8_t adc_cr_to_bits_table[] = {16, 14, 12, 10, 8, 8, 8, 8};
 #else
-STATIC const uint8_t adc_cr_to_bits_table[] = {12, 10, 8, 6};
+static const uint8_t adc_cr_to_bits_table[] = {12, 10, 8, 6};
 #endif
 
 void adc_config(ADC_TypeDef *adc, uint32_t bits) {
@@ -311,7 +313,7 @@ void adc_config(ADC_TypeDef *adc, uint32_t bits) {
     #endif
 }
 
-STATIC int adc_get_bits(ADC_TypeDef *adc) {
+static int adc_get_bits(ADC_TypeDef *adc) {
     #if defined(STM32F0) || defined(STM32G0) || defined(STM32L0) || defined(STM32WL)
     uint32_t res = (adc->CFGR1 & ADC_CFGR1_RES) >> ADC_CFGR1_RES_Pos;
     #elif defined(STM32F4) || defined(STM32F7) || defined(STM32L1)
@@ -322,7 +324,7 @@ STATIC int adc_get_bits(ADC_TypeDef *adc) {
     return adc_cr_to_bits_table[res];
 }
 
-STATIC void adc_config_channel(ADC_TypeDef *adc, uint32_t channel, uint32_t sample_time) {
+static void adc_config_channel(ADC_TypeDef *adc, uint32_t channel, uint32_t sample_time) {
     #if ADC_V2
     if (!(adc->CR & ADC_CR_ADEN)) {
         if (adc->CR & 0x3f) {
@@ -441,7 +443,7 @@ STATIC void adc_config_channel(ADC_TypeDef *adc, uint32_t channel, uint32_t samp
     #endif
 }
 
-STATIC uint32_t adc_read_channel(ADC_TypeDef *adc) {
+static uint32_t adc_read_channel(ADC_TypeDef *adc) {
     uint32_t value;
     #if defined(STM32G4)
     // For STM32G4 there is errata 2.7.7, "Wrong ADC result if conversion done late after
@@ -490,7 +492,26 @@ uint32_t adc_config_and_read_u16(ADC_TypeDef *adc, uint32_t channel, uint32_t sa
 
 #if !BUILDING_MBOOT
 
-const mp_obj_type_t machine_adc_type;
+#if defined(ADC_CHANNEL_VBAT)
+#define MICROPY_PY_MACHINE_ADC_CLASS_CONSTANTS_CORE_VBAT \
+    { MP_ROM_QSTR(MP_QSTR_CORE_VBAT), MP_ROM_INT(MACHINE_ADC_INT_CH_VBAT) },
+#else
+#define MICROPY_PY_MACHINE_ADC_CLASS_CONSTANTS_CORE_VBAT
+#endif
+
+#if defined(ADC_CHANNEL_VDDCORE)
+#define MICROPY_PY_MACHINE_ADC_CLASS_CONSTANTS_CORE_VDD \
+    { MP_ROM_QSTR(MP_QSTR_CORE_VDD), MP_ROM_INT(MACHINE_ADC_INT_CH_VDDCORE) },
+#else
+#define MICROPY_PY_MACHINE_ADC_CLASS_CONSTANTS_CORE_VDD
+#endif
+
+#define MICROPY_PY_MACHINE_ADC_CLASS_CONSTANTS \
+    { MP_ROM_QSTR(MP_QSTR_VREF), MP_ROM_INT(MACHINE_ADC_CH_VREF) }, \
+    { MP_ROM_QSTR(MP_QSTR_CORE_VREF), MP_ROM_INT(MACHINE_ADC_INT_CH_VREFINT) }, \
+    { MP_ROM_QSTR(MP_QSTR_CORE_TEMP), MP_ROM_INT(MACHINE_ADC_INT_CH_TEMPSENSOR) }, \
+    MICROPY_PY_MACHINE_ADC_CLASS_CONSTANTS_CORE_VBAT \
+    MICROPY_PY_MACHINE_ADC_CLASS_CONSTANTS_CORE_VDD \
 
 typedef struct _machine_adc_obj_t {
     mp_obj_base_t base;
@@ -499,7 +520,7 @@ typedef struct _machine_adc_obj_t {
     uint32_t sample_time;
 } machine_adc_obj_t;
 
-STATIC void machine_adc_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
+static void mp_machine_adc_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_adc_obj_t *self = MP_OBJ_TO_PTR(self_in);
     unsigned adc_id = 1;
     #if defined(ADC2)
@@ -516,7 +537,7 @@ STATIC void machine_adc_print(const mp_print_t *print, mp_obj_t self_in, mp_prin
 }
 
 // ADC(id)
-STATIC mp_obj_t machine_adc_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
+static mp_obj_t mp_machine_adc_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     // Check number of arguments
     mp_arg_check_num(n_args, n_kw, 1, 1, false);
 
@@ -550,7 +571,7 @@ STATIC mp_obj_t machine_adc_make_new(const mp_obj_type_t *type, size_t n_args, s
             sample_time = ADC_SAMPLETIME_DEFAULT_INT;
         }
     } else {
-        const pin_obj_t *pin = pin_find(source);
+        const machine_pin_obj_t *pin = pin_find(source);
         if (pin->adc_num & PIN_ADC1) {
             #if defined(STM32WL)
             adc = ADC;
@@ -586,34 +607,8 @@ STATIC mp_obj_t machine_adc_make_new(const mp_obj_type_t *type, size_t n_args, s
 }
 
 // read_u16()
-STATIC mp_obj_t machine_adc_read_u16(mp_obj_t self_in) {
-    machine_adc_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    return MP_OBJ_NEW_SMALL_INT(adc_config_and_read_u16(self->adc, self->channel, self->sample_time));
+static mp_int_t mp_machine_adc_read_u16(machine_adc_obj_t *self) {
+    return adc_config_and_read_u16(self->adc, self->channel, self->sample_time);
 }
-MP_DEFINE_CONST_FUN_OBJ_1(machine_adc_read_u16_obj, machine_adc_read_u16);
-
-STATIC const mp_rom_map_elem_t machine_adc_locals_dict_table[] = {
-    { MP_ROM_QSTR(MP_QSTR_read_u16), MP_ROM_PTR(&machine_adc_read_u16_obj) },
-
-    { MP_ROM_QSTR(MP_QSTR_VREF), MP_ROM_INT(MACHINE_ADC_CH_VREF) },
-    { MP_ROM_QSTR(MP_QSTR_CORE_VREF), MP_ROM_INT(MACHINE_ADC_INT_CH_VREFINT) },
-    { MP_ROM_QSTR(MP_QSTR_CORE_TEMP), MP_ROM_INT(MACHINE_ADC_INT_CH_TEMPSENSOR) },
-    #if defined(ADC_CHANNEL_VBAT)
-    { MP_ROM_QSTR(MP_QSTR_CORE_VBAT), MP_ROM_INT(MACHINE_ADC_INT_CH_VBAT) },
-    #endif
-    #if defined(ADC_CHANNEL_VDDCORE)
-    { MP_ROM_QSTR(MP_QSTR_CORE_VDD), MP_ROM_INT(MACHINE_ADC_INT_CH_VDDCORE) },
-    #endif
-};
-STATIC MP_DEFINE_CONST_DICT(machine_adc_locals_dict, machine_adc_locals_dict_table);
-
-MP_DEFINE_CONST_OBJ_TYPE(
-    machine_adc_type,
-    MP_QSTR_ADC,
-    MP_TYPE_FLAG_NONE,
-    make_new, machine_adc_make_new,
-    print, machine_adc_print,
-    locals_dict, &machine_adc_locals_dict
-    );
 
 #endif

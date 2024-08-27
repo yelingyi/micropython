@@ -33,6 +33,7 @@
 #include "systick.h"
 #include "dma.h"
 #include "irq.h"
+#include "mpu.h"
 
 // When this option is enabled, the DMA will turn off automatically after
 // a period of inactivity.
@@ -131,7 +132,7 @@ static const DMA_InitTypeDef dma_init_struct_spi_i2c = {
 };
 #endif
 
-#if MICROPY_HW_ENABLE_I2S
+#if MICROPY_PY_MACHINE_I2S
 // Default parameters to dma_init() for i2s; Channel and Direction
 // vary depending on the peripheral instance so they get passed separately
 static const DMA_InitTypeDef dma_init_struct_i2s = {
@@ -156,7 +157,7 @@ static const DMA_InitTypeDef dma_init_struct_i2s = {
 };
 #endif
 
-#if ENABLE_SDIO && !defined(STM32H7)
+#if ENABLE_SDIO && !defined(STM32H5) && !defined(STM32H7)
 // Parameters to dma_init() for SDIO tx and rx.
 static const DMA_InitTypeDef dma_init_struct_sdio = {
     #if defined(STM32F4) || defined(STM32F7)
@@ -314,7 +315,7 @@ const dma_descr_t dma_I2C_3_RX = { DMA1_Stream2, DMA_CHANNEL_3, dma_id_2,   &dma
 const dma_descr_t dma_I2C_2_RX = { DMA1_Stream2, DMA_CHANNEL_7, dma_id_2,   &dma_init_struct_spi_i2c };
 const dma_descr_t dma_SPI_2_RX = { DMA1_Stream3, DMA_CHANNEL_0, dma_id_3,   &dma_init_struct_spi_i2c };
 const dma_descr_t dma_SPI_2_TX = { DMA1_Stream4, DMA_CHANNEL_0, dma_id_4,   &dma_init_struct_spi_i2c };
-#if MICROPY_HW_ENABLE_I2S
+#if MICROPY_PY_MACHINE_I2S
 const dma_descr_t dma_I2S_2_RX = { DMA1_Stream3, DMA_CHANNEL_0, dma_id_3,   &dma_init_struct_i2s };
 const dma_descr_t dma_I2S_2_TX = { DMA1_Stream4, DMA_CHANNEL_0, dma_id_4,   &dma_init_struct_i2s };
 #endif
@@ -342,7 +343,7 @@ const dma_descr_t dma_SDMMC_2 = { DMA2_Stream0, DMA_CHANNEL_11, dma_id_8,  &dma_
 const dma_descr_t dma_DCMI_0 = { DMA2_Stream1, DMA_CHANNEL_1, dma_id_9,  &dma_init_struct_dcmi };
 #endif
 const dma_descr_t dma_SPI_1_RX = { DMA2_Stream2, DMA_CHANNEL_3, dma_id_10,  &dma_init_struct_spi_i2c };
-#if MICROPY_HW_ENABLE_I2S
+#if MICROPY_PY_MACHINE_I2S
 const dma_descr_t dma_I2S_1_RX = { DMA2_Stream2, DMA_CHANNEL_3, dma_id_10,  &dma_init_struct_i2s };
 #endif
 #if ENABLE_SDIO
@@ -356,7 +357,7 @@ const dma_descr_t dma_SPI_5_TX = { DMA2_Stream4, DMA_CHANNEL_2, dma_id_12,  &dma
 const dma_descr_t dma_SPI_4_TX = { DMA2_Stream4, DMA_CHANNEL_5, dma_id_12,  &dma_init_struct_spi_i2c };
 const dma_descr_t dma_SPI_6_TX = { DMA2_Stream5, DMA_CHANNEL_1, dma_id_13,  &dma_init_struct_spi_i2c };
 const dma_descr_t dma_SPI_1_TX = { DMA2_Stream5, DMA_CHANNEL_3, dma_id_13,  &dma_init_struct_spi_i2c };
-#if MICROPY_HW_ENABLE_I2S
+#if MICROPY_PY_MACHINE_I2S
 const dma_descr_t dma_I2S_1_TX = { DMA2_Stream5, DMA_CHANNEL_3, dma_id_13,  &dma_init_struct_i2s };
 #endif
 // #if defined(STM32F7) && defined(SDMMC2) && ENABLE_SDIO
@@ -1852,3 +1853,55 @@ void dma_external_acquire(uint32_t controller, uint32_t stream) {
 void dma_external_release(uint32_t controller, uint32_t stream) {
     dma_disable_clock(DMA_ID_FROM_CONTROLLER_STREAM(controller, stream));
 }
+
+#if __DCACHE_PRESENT
+
+void dma_protect_rx_region(void *dest, size_t len) {
+    #if __DCACHE_PRESENT
+    uint32_t start_addr = (uint32_t)dest;
+    uint32_t start_aligned = start_addr & ~(__SCB_DCACHE_LINE_SIZE - 1U);
+    uint32_t end_addr = start_addr + len - 1; // Address of last byte in the buffer
+    uint32_t end_aligned = end_addr & ~(__SCB_DCACHE_LINE_SIZE - 1U);
+
+    uint32_t irq_state = mpu_config_start();
+
+    // Clean (write back) any cached memory in this region, so there's no dirty
+    // cache entries that might be written back later after DMA RX is done.
+    MP_HAL_CLEAN_DCACHE(dest, len);
+
+    // The way we protect the whole region is to mark the first and last cache
+    // line as UNCACHED using the MPU. This means any unrelated reads/writes in
+    // these cache lines will bypass the cache, and can coexist with DMA also
+    // writing to parts of these cache lines.
+    //
+    // This is redundant sometimes (because the DMA region fills the entire cache line, or because
+    // the region fits in a single cache line.) However, the implementation is only 3 register writes so
+    // it's more efficient to call it every time.
+    mpu_config_region(MPU_REGION_DMA_UNCACHED_1, start_aligned, MPU_CONFIG_UNCACHED(MPU_REGION_SIZE_32B));
+    mpu_config_region(MPU_REGION_DMA_UNCACHED_2, end_aligned, MPU_CONFIG_UNCACHED(MPU_REGION_SIZE_32B));
+
+    mpu_config_end(irq_state);
+    #endif
+}
+
+void dma_unprotect_rx_region(void *dest, size_t len) {
+    #if __DCACHE_PRESENT
+    uint32_t irq_state = mpu_config_start();
+
+    // Disabling these regions removes them from the MPU
+    mpu_config_region(MPU_REGION_DMA_UNCACHED_1, 0, MPU_CONFIG_DISABLE);
+    mpu_config_region(MPU_REGION_DMA_UNCACHED_2, 0, MPU_CONFIG_DISABLE);
+
+    // Invalidate the whole region in the cache. This may seem redundant, but it
+    // is possible that during the DMA operation the CPU read inside this region
+    // (excluding the first & last cache lines), and cache lines were filled.
+    //
+    // (This can happen in SPI if src==dest, for example, possibly due to speculative
+    // cache line fills.)
+    MP_HAL_CLEANINVALIDATE_DCACHE(dest, len);
+
+    mpu_config_end(irq_state);
+    #endif
+}
+
+#endif

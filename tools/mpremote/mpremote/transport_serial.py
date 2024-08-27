@@ -331,7 +331,7 @@ class SerialTransport(Transport):
     def fs_stat(self, src):
         try:
             self.exec("import os")
-            return os.stat_result(self.eval("os.stat(%s)" % (("'%s'" % src)), parse=True))
+            return os.stat_result(self.eval("os.stat(%s)" % ("'%s'" % src), parse=True))
         except TransportError as e:
             reraise_filesystem_error(e, src)
 
@@ -753,6 +753,13 @@ class RemoteFile(io.IOBase):
             machine.mem32[arg] = self.seek(machine.mem32[arg], machine.mem32[arg + 4])
         elif request == 4:  # CLOSE
             self.close()
+        elif request == 11:  # BUFFER_SIZE
+            # This is used as the vfs_reader buffer. n + 4 should be less than 255 to
+            # fit in stdin ringbuffer on supported ports. n + 7 should be multiple of 16
+            # to efficiently use gc blocks in mp_reader_vfs_t.
+            return 249
+        else:
+            return -1
         return 0
 
     def flush(self):
@@ -831,6 +838,9 @@ class RemoteFS:
     def __init__(self, cmd):
         self.cmd = cmd
 
+    def _abspath(self, path):
+        return path if path.startswith("/") else self.path + path
+
     def mount(self, readonly, mkfs):
         pass
 
@@ -852,7 +862,7 @@ class RemoteFS:
     def remove(self, path):
         c = self.cmd
         c.begin(CMD_REMOVE)
-        c.wr_str(self.path + path)
+        c.wr_str(self._abspath(path))
         res = c.rd_s32()
         c.end()
         if res < 0:
@@ -861,8 +871,8 @@ class RemoteFS:
     def rename(self, old, new):
         c = self.cmd
         c.begin(CMD_RENAME)
-        c.wr_str(self.path + old)
-        c.wr_str(self.path + new)
+        c.wr_str(self._abspath(old))
+        c.wr_str(self._abspath(new))
         res = c.rd_s32()
         c.end()
         if res < 0:
@@ -871,7 +881,7 @@ class RemoteFS:
     def mkdir(self, path):
         c = self.cmd
         c.begin(CMD_MKDIR)
-        c.wr_str(self.path + path)
+        c.wr_str(self._abspath(path))
         res = c.rd_s32()
         c.end()
         if res < 0:
@@ -880,7 +890,7 @@ class RemoteFS:
     def rmdir(self, path):
         c = self.cmd
         c.begin(CMD_RMDIR)
-        c.wr_str(self.path + path)
+        c.wr_str(self._abspath(path))
         res = c.rd_s32()
         c.end()
         if res < 0:
@@ -889,7 +899,7 @@ class RemoteFS:
     def stat(self, path):
         c = self.cmd
         c.begin(CMD_STAT)
-        c.wr_str(self.path + path)
+        c.wr_str(self._abspath(path))
         res = c.rd_s8()
         if res < 0:
             c.end()
@@ -905,7 +915,7 @@ class RemoteFS:
     def ilistdir(self, path):
         c = self.cmd
         c.begin(CMD_ILISTDIR_START)
-        c.wr_str(self.path + path)
+        c.wr_str(self._abspath(path))
         res = c.rd_s8()
         c.end()
         if res < 0:
@@ -926,7 +936,7 @@ class RemoteFS:
     def open(self, path, mode):
         c = self.cmd
         c.begin(CMD_OPEN)
-        c.wr_str(self.path + path)
+        c.wr_str(self._abspath(path))
         c.wr_str(mode)
         fd = c.rd_s8()
         c.end()

@@ -16,14 +16,11 @@
         "TinyPICO Compatible"
     ],
     "images": [
-        "tinypico-v2-both.jpg"
+        "unexpectedmaker_tinypico.jpg"
     ],
     "mcu": "esp32",
     "product": "TinyPICO",
     "thumbnail": "",
     "url": "https://www.tinypico.com/",
-    "variants": {
-        "IDF3": "Compiled with IDF 3.x"
-    },
     "vendor": "Unexpected Maker"
 }

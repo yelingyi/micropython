@@ -40,9 +40,7 @@ set(MICROPY_SOURCE_PORT
     machine_i2c.c
     machine_spi.c
     machine_pin.c
-    machine_uart.c
     modbluetooth_zephyr.c
-    modmachine.c
     modsocket.c
     modzephyr.c
     modzsensor.c
@@ -111,6 +109,7 @@ zephyr_library_compile_definitions(
 )
 
 zephyr_library_sources(${MICROPY_SOURCE_QSTR})
+zephyr_library_link_libraries(kernel)
 
 add_dependencies(${MICROPY_TARGET} zephyr_generated_headers)
 

@@ -34,8 +34,8 @@
 #include "shared/runtime/gchelper.h"
 #include "shared/runtime/pyexec.h"
 #include "shared/runtime/softtimer.h"
+#include "shared/tinyusb/mp_usbd.h"
 #include "ticks.h"
-#include "tusb.h"
 #include "led.h"
 #include "pendsv.h"
 #include "modmachine.h"
@@ -63,7 +63,6 @@ void board_init(void);
 int main(void) {
     board_init();
     ticks_init();
-    tusb_init();
     pendsv_init();
 
     #if MICROPY_PY_LWIP
@@ -88,12 +87,13 @@ int main(void) {
         memcpy(&buf[0], "PYBD", 4);
         mp_hal_get_mac_ascii(MP_HAL_MAC_WLAN0, 8, 4, (char *)&buf[4]);
         cyw43_wifi_ap_set_ssid(&cyw43_state, 8, buf);
+        cyw43_wifi_ap_set_auth(&cyw43_state, CYW43_AUTH_WPA2_MIXED_PSK);
         cyw43_wifi_ap_set_password(&cyw43_state, 8, (const uint8_t *)"pybd0123");
     }
     #endif
 
     for (;;) {
-        #if defined(MICROPY_HW_LED1)
+        #if defined(MICROPY_HW_LED1_PIN)
         led_init();
         #endif
 
@@ -115,6 +115,11 @@ int main(void) {
 
         // Execute user scripts.
         int ret = pyexec_file_if_exists("boot.py");
+
+        #if MICROPY_HW_ENABLE_USBDEV
+        mp_usbd_init();
+        #endif
+
         if (ret & PYEXEC_FORCED_EXIT) {
             goto soft_reset_exit;
         }
@@ -141,6 +146,7 @@ int main(void) {
     soft_reset_exit:
         mp_printf(MP_PYTHON_PRINTER, "MPY: soft reboot\n");
         machine_pin_irq_deinit();
+        machine_rtc_irq_deinit();
         #if MICROPY_PY_MACHINE_I2S
         machine_i2s_deinit_all();
         #endif

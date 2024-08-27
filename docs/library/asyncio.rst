@@ -219,8 +219,7 @@ class ThreadSafeFlag
 
     Create a new flag which can be used to synchronise a task with code running
     outside the asyncio loop, such as other threads, IRQs, or scheduler
-    callbacks.  Flags start in the cleared state.  The class does not currently
-    work under the Unix build of MicroPython.
+    callbacks.  Flags start in the cleared state.
 
 .. method:: ThreadSafeFlag.set()
 
@@ -271,10 +270,12 @@ class Lock
 TCP stream connections
 ----------------------
 
-.. function:: open_connection(host, port)
+.. function:: open_connection(host, port, ssl=None)
 
     Open a TCP connection to the given *host* and *port*.  The *host* address will be
     resolved using `socket.getaddrinfo`, which is currently a blocking call.
+    If *ssl* is a `ssl.SSLContext` object, this context is used to create the transport;
+    if *ssl* is ``True``, a default context is used.
 
     Returns a pair of streams: a reader and a writer stream.
     Will raise a socket-specific ``OSError`` if the host could not be resolved or if
@@ -282,13 +283,15 @@ TCP stream connections
 
     This is a coroutine.
 
-.. function:: start_server(callback, host, port, backlog=5)
+.. function:: start_server(callback, host, port, backlog=5, ssl=None)
 
     Start a TCP server on the given *host* and *port*.  For each incoming,
     accepted connection, *callback* will be called in a new task with
     2 arguments: reader and writer streams for the connection.
 
     If you use taskgroups, you should use `run_server` instead.
+
+    If *ssl* is a `ssl.SSLContext` object, this context is used to create the transport.
 
     Returns a `Server` object.
 
