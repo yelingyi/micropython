@@ -18,7 +18,7 @@ class Stream:
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        await self.close()
+        self.close()
 
     def close(self):
         # The (old) CPython idiom is to call `close`, then immediately
