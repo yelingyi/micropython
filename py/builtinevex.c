@@ -44,6 +44,7 @@ static MP_DEFINE_CONST_OBJ_TYPE(
     MP_TYPE_FLAG_NONE
     );
 
+#if MICROPY_PY_BUILTINS_EVAL_EXEC && MICROPY_PY_BUILTINS_COMPILE
 static mp_obj_t code_execute(mp_obj_code_t *self, mp_obj_dict_t *globals, mp_obj_dict_t *locals) {
     // save context
     nlr_jump_callback_node_globals_locals_t ctx;
@@ -77,6 +78,7 @@ static mp_obj_t code_execute(mp_obj_code_t *self, mp_obj_dict_t *globals, mp_obj
     // return value
     return ret;
 }
+#endif
 
 static mp_obj_t mp_builtin_compile(size_t n_args, const mp_obj_t *args) {
     (void)n_args;
