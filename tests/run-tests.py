@@ -572,6 +572,34 @@ class PyboardNodeRunner:
         # Return the results.
         return had_crash, output_mupy
 
+def print_output_skip(test):
+    if 0:
+        print("skip ", test)
+    else:
+        print("skip ", test, end="         \r")
+
+def print_output_start(test):
+    if 0:
+        pass
+    else:
+        print(".... ", test, end="            \r")
+
+def print_output_end_skip(test):
+    if 0:
+        print("skip ", test)
+    else:
+        return
+        print("skip ", test, end="              \r")
+
+def print_output_end_pass(test):
+    if 0:
+        print("pass ", test)
+    else:
+        return
+        print("pass ", test, end="              \r")
+
+def print_output_end_fail(test):
+    print("FAIL ", test)
 
 def run_tests(pyb, tests, args, result_dir, num_threads=1):
     test_count = ThreadSafeCounter()
@@ -858,7 +886,7 @@ def run_tests(pyb, tests, args, result_dir, num_threads=1):
         skip_it |= skip_fstring and is_fstring
 
         if skip_it:
-            print("skip ", test_file)
+            print_output_skip(test_file)
             skipped_tests.append(test_name)
             return
 
@@ -882,6 +910,8 @@ def run_tests(pyb, tests, args, result_dir, num_threads=1):
         # canonical form for all host platforms is to use \n for end-of-line
         output_expected = output_expected.replace(b"\r\n", b"\n")
 
+        print_output_start(test_file)
+
         # run MicroPython
         output_mupy = run_micropython(pyb, args, test_file, test_file_abspath)
 
@@ -892,7 +922,7 @@ def run_tests(pyb, tests, args, result_dir, num_threads=1):
                 # reset.  Wait for the soft reset to finish, so we don't interrupt the
                 # start-up code (eg boot.py) when preparing to run the next test.
                 pyb.read_until(1, b"raw REPL; CTRL-B to exit\r\n")
-            print("skip ", test_file)
+            print_output_end_skip(test_file)
             skipped_tests.append(test_name)
             return
 
@@ -902,7 +932,7 @@ def run_tests(pyb, tests, args, result_dir, num_threads=1):
         filename_mupy = os.path.join(result_dir, test_basename + ".out")
 
         if output_expected == output_mupy:
-            print("pass ", test_file)
+            print_output_end_pass(test_file)
             passed_count.increment()
             rm_f(filename_expected)
             rm_f(filename_mupy)
@@ -911,7 +941,7 @@ def run_tests(pyb, tests, args, result_dir, num_threads=1):
                 f.write(output_expected)
             with open(filename_mupy, "wb") as f:
                 f.write(output_mupy)
-            print("FAIL ", test_file)
+            print_output_end_fail(test_file)
             failed_tests.append((test_name, test_file))
 
         test_count.increment()
