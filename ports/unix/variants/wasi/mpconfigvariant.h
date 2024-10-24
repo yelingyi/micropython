@@ -34,5 +34,7 @@
 #define MICROPY_PY_OS_SYSTEM (0)
 #define MICROPY_PY_SYS_EXECUTABLE (0)
 
+#define MICROPY_PY_WEBSOCKET (0)
+
 // Enable extra Unix features.
 #include "../mpconfigvariant_common.h"
