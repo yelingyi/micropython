@@ -209,6 +209,47 @@ void m_free(void *ptr)
 
 #if MICROPY_TRACKED_ALLOC
 
+#if MICROPY_PY_THREAD && !MICROPY_PY_THREAD_GIL
+// If there's no GIL, use the GC mutex to protect the tracked node linked list.
+//
+// Needs some care to avoid deadlocks:
+// - Tracked alloc functions are called from finalisers when the GC is already locked.
+// - Can't call back into any gc_* API while holding the GC mutex, it's not recursive.
+//
+// (For ports with GIL, the expectation is to only call tracked alloc functions
+// while holding the GIL.)
+
+static bool node_locked_gc; // Have we locked the gc mutex ourselves?
+
+static void m_tracked_node_lock(void) {
+    if (gc_is_locked()) {
+        // This thread has already locked the GC, OK to continue
+        assert(!node_locked_gc);
+    } else {
+        // Lock it ourselves, and set the flag indicating we must unlock it
+        // ourselves
+        mp_thread_mutex_lock(&MP_STATE_MEM(gc_mutex), 1);
+        node_locked_gc = true;
+    }
+}
+
+static void m_tracked_node_unlock(void) {
+    if (node_locked_gc) {
+        node_locked_gc = false;
+        mp_thread_mutex_unlock(&MP_STATE_MEM(gc_mutex));
+    }
+}
+
+#else
+
+static inline void m_tracked_node_lock(void) {
+}
+
+static inline void m_tracked_node_unlock(void) {
+}
+
+#endif
+
 #define MICROPY_TRACKED_ALLOC_STORE_SIZE (!MICROPY_ENABLE_GC)
 
 typedef struct _m_tracked_node_t {
@@ -222,6 +263,7 @@ typedef struct _m_tracked_node_t {
 
 #if MICROPY_DEBUG_VERBOSE
 static size_t m_tracked_count_links(size_t *nb) {
+    m_tracked_node_lock();
     m_tracked_node_t *node = MP_STATE_VM(m_tracked_head);
     size_t n = 0;
     *nb = 0;
@@ -229,22 +271,25 @@ static size_t m_tracked_count_links(size_t *nb) {
         ++n;
         #if MICROPY_TRACKED_ALLOC_STORE_SIZE
         *nb += node->size;
-        #else
+        #elif (!MICROPY_PY_THREAD && !MICROPY_PY_THREAD_GIL) // see note above
         *nb += gc_nbytes(node);
         #endif
         node = node->next;
     }
+    m_tracked_node_unlock();
     return n;
 }
 #endif
 
 static void m_tracked_node_insert(m_tracked_node_t **head, m_tracked_node_t *node) {
+    m_tracked_node_lock();
     if ((*head) != NULL) {
         (*head)->prev = node;
     }
     node->prev = NULL;
     node->next = (*head);
     (*head) = node;
+    m_tracked_node_unlock();
 }
 
 void *m_tracked_calloc(size_t nmemb, size_t size) {
@@ -257,10 +302,10 @@ void *m_tracked_calloc(size_t nmemb, size_t size) {
     size_t n = m_tracked_count_links(&nb);
     DEBUG_printf("m_tracked_calloc(%u, %u) -> (%u;%u) %p\n", (int)nmemb, (int)size, (int)n, (int)nb, node);
     #endif
-    m_tracked_node_insert(&MP_STATE_VM(m_tracked_head), node);
     #if MICROPY_TRACKED_ALLOC_STORE_SIZE
     node->size = nmemb * size;
     #endif
+    m_tracked_node_insert(&MP_STATE_VM(m_tracked_head), node);
     #if !MICROPY_GC_CONSERVATIVE_CLEAR
     memset(&node->data[0], 0, nmemb * size);
     #endif
@@ -295,6 +340,7 @@ void m_tracked_free(void *ptr_in) {
     size_t n = m_tracked_count_links(&nb);
     DEBUG_printf("m_tracked_free(%p, [%p, %p], nbytes=%u, links=%u;%u)\n", node, node->prev, node->next, (int)data_bytes, (int)n, (int)nb);
     #endif
+    m_tracked_node_lock();
     if (node->next != NULL) {
         node->next->prev = node->prev;
     }
@@ -303,6 +349,7 @@ void m_tracked_free(void *ptr_in) {
     } else {
         MP_STATE_VM(m_tracked_head) = node->next;
     }
+    m_tracked_node_unlock();
     #if MICROPY_ENABLE_FINALISER
     if (MP_STATE_THREAD(gc_lock_depth) == 0) {
         m_tracked_inner_free_node(node);
@@ -323,13 +370,20 @@ void m_tracked_free_pending(void) {
     m_tracked_node_t *head;
 
     if (MP_STATE_THREAD(gc_lock_depth) == 0) {
-        while ((head = MP_STATE_VM(m_tracked_pending_free_head))) {
-            MP_STATE_VM(m_tracked_pending_free_head) = head->next;
+        do {
+            // Locking inside each iteration to avoid a deadlock calling gc_nbytes()
+            m_tracked_node_lock();
+            head = MP_STATE_VM(m_tracked_pending_free_head);
+            if (head) {
+                MP_STATE_VM(m_tracked_pending_free_head) = head->next;
+            }
+            m_tracked_node_unlock();
+
             // During gc_sweep_all() these nodes are already free, so check first
-            if (gc_nbytes(head)) {
+            if (head && gc_nbytes(head)) {
                 m_tracked_inner_free_node(head);
             }
-        }
+        } while (head);
     }
 }
 #endif // MICROPY_ENABLE_FINALISER
