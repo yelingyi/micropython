@@ -119,7 +119,9 @@
 #define MICROPY_PY_SELECT_SELECT       (0)
 
 // Enable the "websocket" module.
+#ifndef MICROPY_PY_WEBSOCKET
 #define MICROPY_PY_WEBSOCKET           (1)
+#endif
 
 // Enable the "machine" module, mostly for machine.mem*.
 #define MICROPY_PY_MACHINE             (1)
