@@ -6,11 +6,12 @@ except ImportError:
     print("SKIP")
     raise SystemExit
 
-# Check that the ssl module has the DTLS constants.
-if (not hasattr(ssl, 'PROTOCOL_DTLS_CLIENT') or
-    not hasattr(ssl, 'PROTOCOL_DTLS_SERVER')):
+try:
+    import ssl.PROTOCOL_DTLS_CLIENT
+    import ssl.PROTOCOL_DTLS_SERVER
+except NameError:
     print("SKIP")
-    raise SystemExit
+
 
 # Test constructing with arguments.
 dtls_client = ssl.SSLContext(ssl.PROTOCOL_DTLS_CLIENT)
