@@ -1,0 +1,40 @@
+name: Build STM32F412RG Firmware
+
+on:
+  push:
+    branches:
+      - stm32f412RGT6
+  pull_request:
+    branches:
+      - stm32f412RGT6
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        board: [STM32F412RG] # 确保此处与 ports/stm32/boards/ 中的文件夹名称一致
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+
+    - name: 安装 ARM 工具链
+      run: |
+        sudo apt update
+        sudo apt install -y gcc-arm-none-eabi
+
+    - name: 初始化子模块
+      run: git submodule update --init --recursive  
+
+    - name: 编译 mpy-cross
+      run: make -j $(nproc) -C mpy-cross
+
+    - name: 编译固件
+      run: make -j $(nproc) -C ports/stm32 BOARD=${{ matrix.board }} V=1
+
+    - name: 上传固件
+      uses: actions/upload-artifact@v4
+      if: ${{ github.event_name == 'push' }}
+      with:
+        name: ${{ matrix.board }}.hex
+        path: ports/stm32/build-${{ matrix.board }}/firmware.hex
