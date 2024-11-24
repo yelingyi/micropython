@@ -201,9 +201,7 @@ def main():
             print(target.version)
             run_tests_cmd = [
                 "./run-tests.py",
-                "--target",
-                target.port,
-                "--device",
+                "--test-instance",
                 target.device,
                 "--result-dir",
                 f"results_{target.device_suffix}",
