@@ -243,13 +243,8 @@ bool uart_exists(int uart_id) {
 }
 
 // assumes Init parameters have been set up correctly
-#if defined(STM32H7)
 bool uart_init(machine_uart_obj_t *uart_obj,
     uint32_t baudrate, uint32_t bits, uint32_t parity, uint32_t stop, uint32_t flow, uint32_t invert) {
-#else
-bool uart_init(machine_uart_obj_t *uart_obj,
-    uint32_t baudrate, uint32_t bits, uint32_t parity, uint32_t stop, uint32_t flow) {
-#endif
     USART_TypeDef *UARTx;
     IRQn_Type irqn;
     uint8_t uart_fn = AF_FN_UART;

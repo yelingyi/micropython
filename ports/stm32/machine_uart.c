@@ -237,17 +237,15 @@ static void mp_machine_uart_init_helper(machine_uart_obj_t *self, size_t n_args,
     // inverted
     #if defined(STM32H7) 
     uint32_t invert = args.invert.u_int;
+    #else
+    uint32_t invert = 0;
     #endif
 
     // Save attach_to_repl setting because uart_init will disable it.
     bool attach_to_repl = self->attached_to_repl;
 
     // init UART (if it fails, it's because the port doesn't exist)
-    #if defined(STM32H7) 
     if (!uart_init(self, baudrate, bits, parity, stop, flow, invert)) {
-    #else
-    if (!uart_init(self, baudrate, bits, parity, stop, flow)) {
-    #endif
         mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("UART(%d) doesn't exist"), self->uart_id);
     }
 
