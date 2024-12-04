@@ -127,15 +127,15 @@ sio_fd_t sio_open(u8_t dvnum) {
 }
 
 void sio_send(u8_t c, sio_fd_t fd) {
-    mp_obj_type_t *type = mp_obj_get_type(MP_STATE_VM(lwip_slip_stream));
+    const mp_stream_p_t *stream_p = mp_get_stream(MP_STATE_VM(lwip_slip_stream));
     int error;
-    type->stream_p->write(MP_STATE_VM(lwip_slip_stream), &c, 1, &error);
+    stream_p->write(MP_STATE_VM(lwip_slip_stream), &c, 1, &error);
 }
 
 u32_t sio_tryread(sio_fd_t fd, u8_t *data, u32_t len) {
-    mp_obj_type_t *type = mp_obj_get_type(MP_STATE_VM(lwip_slip_stream));
+    const mp_stream_p_t *stream_p = mp_get_stream(MP_STATE_VM(lwip_slip_stream));
     int error;
-    mp_uint_t out_sz = type->stream_p->read(MP_STATE_VM(lwip_slip_stream), data, len, &error);
+    mp_uint_t out_sz = stream_p->read(MP_STATE_VM(lwip_slip_stream), data, len, &error);
     if (out_sz == MP_STREAM_ERROR) {
         if (mp_is_nonblocking_error(error)) {
             return 0;
@@ -701,7 +701,12 @@ static mp_uint_t lwip_tcp_send(lwip_socket_obj_t *socket, const byte *buf, mp_ui
 
     MICROPY_PY_LWIP_ENTER
 
-    u16_t available = tcp_sndbuf(socket->pcb.tcp);
+    // If the socket is still connecting then don't let data be written to it.
+    // Otherwise, get the number of available bytes in the output buffer.
+    u16_t available = 0;
+    if (socket->state != STATE_CONNECTING) {
+        available = tcp_sndbuf(socket->pcb.tcp);
+    }
 
     if (available == 0) {
         // Non-blocking socket
@@ -718,7 +723,8 @@ static mp_uint_t lwip_tcp_send(lwip_socket_obj_t *socket, const byte *buf, mp_ui
         // If peer fully closed socket, we would have socket->state set to ERR_RST (connection
         // reset) by error callback.
         // Avoid sending too small packets, so wait until at least 16 bytes available
-        while (socket->state >= STATE_CONNECTED && (available = tcp_sndbuf(socket->pcb.tcp)) < 16) {
+        while (socket->state == STATE_CONNECTING
+               || (socket->state >= STATE_CONNECTED && (available = tcp_sndbuf(socket->pcb.tcp)) < 16)) {
             MICROPY_PY_LWIP_EXIT
             if (socket->timeout != -1 && mp_hal_ticks_ms() - start > socket->timeout) {
                 *_errno = MP_ETIMEDOUT;
@@ -1432,7 +1438,7 @@ static mp_obj_t lwip_socket_setsockopt(size_t n_args, const mp_obj_t *args) {
         case IP_DROP_MEMBERSHIP: {
             mp_buffer_info_t bufinfo;
             mp_get_buffer_raise(args[3], &bufinfo, MP_BUFFER_READ);
-            if (bufinfo.len != sizeof(ip_addr_t) * 2) {
+            if (bufinfo.len != sizeof(MP_IGMP_IP_ADDR_TYPE) * 2) {
                 mp_raise_ValueError(NULL);
             }
 
@@ -1548,7 +1554,7 @@ static mp_uint_t lwip_socket_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_
                 // raw socket is writable
                 ret |= MP_STREAM_POLL_WR;
             #endif
-            } else if (socket->pcb.tcp != NULL && tcp_sndbuf(socket->pcb.tcp) > 0) {
+            } else if (socket->state != STATE_CONNECTING && socket->pcb.tcp != NULL && tcp_sndbuf(socket->pcb.tcp) > 0) {
                 // TCP socket is writable
                 // Note: pcb.tcp==NULL if state<0, and in this case we can't call tcp_sndbuf
                 ret |= MP_STREAM_POLL_WR;
