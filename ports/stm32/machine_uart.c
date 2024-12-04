@@ -139,7 +139,7 @@ static void mp_machine_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_
         if (!(cr2 & (USART_CR2_TXINV | USART_CR2_RXINV))) {
             mp_print_str(print, "0");
         } else {
-			if (cr2 & USART_CR2_TXINV) {
+            if (cr2 & USART_CR2_TXINV) {
                 mp_print_str(print, "INV_TX");
                 if (cr2 & USART_CR2_RXINV) {
                     mp_print_str(print, "|");
@@ -148,7 +148,7 @@ static void mp_machine_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_
             if (cr2 & USART_CR2_RXINV) {
                 mp_print_str(print, "INV_RX");
             }
-		}
+        }
         #endif
         mp_print_str(print, ")");
     }
@@ -178,7 +178,7 @@ static void mp_machine_uart_init_helper(machine_uart_obj_t *self, size_t n_args,
         { MP_QSTR_timeout_char, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 0} },
         { MP_QSTR_rxbuf, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1} },
         { MP_QSTR_read_buf_len, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 64} }, // legacy
-        #if defined(STM32H7)        
+        #if defined(STM32H7)
         { MP_QSTR_invert, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 0} },
         #endif
     };
@@ -186,8 +186,8 @@ static void mp_machine_uart_init_helper(machine_uart_obj_t *self, size_t n_args,
     // parse args
     struct {
         mp_arg_val_t baudrate, bits, parity, stop, flow, timeout, timeout_char, rxbuf, read_buf_len;
-		#if defined(STM32H7) 
-		mp_arg_val_t invert;
+        #if defined(STM32H7)
+        mp_arg_val_t invert;
         #endif
     } args;
     mp_arg_parse_all(n_args, pos_args, kw_args,
@@ -235,7 +235,7 @@ static void mp_machine_uart_init_helper(machine_uart_obj_t *self, size_t n_args,
     uint32_t flow = args.flow.u_int;
 
     // inverted
-    #if defined(STM32H7) 
+    #if defined(STM32H7)
     uint32_t invert = args.invert.u_int;
     #else
     uint32_t invert = 0;

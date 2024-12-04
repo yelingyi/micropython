@@ -655,16 +655,14 @@ bool uart_init(machine_uart_obj_t *uart_obj,
 
     #if defined(STM32H7)
     huart.AdvancedInit.AdvFeatureInit = (UART_ADVFEATURE_TXINVERT_INIT | UART_ADVFEATURE_RXINVERT_INIT);
-    if(invert & UART_ADVFEATURE_RXINVERT_INIT) {
+    if (invert & UART_ADVFEATURE_RXINVERT_INIT) {
         huart.AdvancedInit.RxPinLevelInvert = UART_ADVFEATURE_RXINV_ENABLE;
-    }
-    else {
+    } else {
         huart.AdvancedInit.RxPinLevelInvert = UART_ADVFEATURE_RXINV_DISABLE;
     }
-    if(invert & UART_ADVFEATURE_TXINVERT_INIT) {
+    if (invert & UART_ADVFEATURE_TXINVERT_INIT) {
         huart.AdvancedInit.TxPinLevelInvert = UART_ADVFEATURE_TXINV_ENABLE;
-    }
-    else {
+    } else {
         huart.AdvancedInit.TxPinLevelInvert = UART_ADVFEATURE_TXINV_DISABLE;
     }
     #endif
