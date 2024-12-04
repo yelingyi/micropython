@@ -35,9 +35,22 @@ ssl_server.setblocking(False)
 
 # Test write with WANT_READ (line 553)
 try:
+    # First write will trigger handshake
     ssl_client.write(b'test')
 except OSError as e:
-    assert e.args[0] == errno.EAGAIN  # WANT_READ during handshake
+    assert e.args[0] == errno.EAGAIN
+
+# Do a partial handshake from server side to force client write to need read
+try:
+    ssl_server.write(b'server hello')
+except OSError as e:
+    assert e.args[0] == errno.EAGAIN
+
+# Now client write should hit WANT_READ during handshake
+try:
+    ssl_client.write(b'test2')
+except OSError as e:
+    assert e.args[0] == errno.EAGAIN
 
 # Test error case (line 564) by trying to write to closed socket
 ssl_client.close()
@@ -63,6 +76,12 @@ try:
     res = poller.poll(100)
     assert len(res) > 0
 
-finally:
+    # Test polling closed socket (line 304)
     ssl_client.close()
+    res = poller.poll(100)
+    # Should return POLLNVAL for closed socket
+    assert len(res) == 1
+    assert res[0][1] & select.POLLNVAL
+
+finally:
     ssl_server.close()
