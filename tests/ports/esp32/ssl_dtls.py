@@ -2,13 +2,11 @@
 
 try:
     import ssl
+    import ssl.PROTOCOL_DTLS_CLIENT
+    import ssl.PROTOCOL_DTLS_SERVER
 except ImportError:
     print("SKIP")
     raise SystemExit
-
-try:
-    import ssl.PROTOCOL_DTLS_CLIENT
-    import ssl.PROTOCOL_DTLS_SERVER
 except NameError:
     print("SKIP")
     raise SystemExit
