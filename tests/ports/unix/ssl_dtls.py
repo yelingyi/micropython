@@ -6,6 +6,7 @@ try:
     import ssl.PROTOCOL_DTLS_SERVER
     import socket
     import errno
+    from select import poll, POLLIN, POLLOUT, POLLNVAL
 except ImportError:
     print("SKIP")
     raise SystemExit
@@ -51,35 +52,32 @@ except OSError as e:
     assert e.args[0] != errno.EAGAIN  # Should be a fatal error, not EAGAIN
 
 # Test pending data checks (lines 572-573)
+client_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+client_sock.connect(server_addr)
+ssl_client = dtls_client.wrap_socket(client_sock, do_handshake_on_connect=False)
+ssl_client.setblocking(False)
+
+# Send data from server to client to create pending data
+server_data = b'server_data' * 100
 try:
-    # Create new client with proper handshake
-    client_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    client_sock.connect(server_addr)
-    ssl_client = dtls_client.wrap_socket(client_sock, do_handshake_on_connect=False)
-    ssl_client.setblocking(False)
+    ssl_server.write(server_data)
+except OSError:
+    pass  # Expected when non-blocking
 
-    # Send data from server to client to create pending data
-    server_data = b'server_data' * 100
-    try:
-        ssl_server.write(server_data)
-    except OSError:
-        pass  # Expected when non-blocking
+# Now poll client - should show pending data
+poller = poll()
+poller.register(ssl_client, POLLIN | POLLOUT)
 
-    # Now poll client - should show pending data
-    from select import poll, POLLIN, POLLOUT
-    poller = poll()
-    poller.register(ssl_client, POLLIN | POLLOUT)
-    
-    # Multiple poll/read cycles to ensure we hit pending data paths
-    for _ in range(3):
-        res = poller.poll(100)
-        if res[0][1] & POLLIN:
-            try:
-                ssl_client.read(100)
-            except OSError:
-                pass
+# Multiple poll/read cycles to ensure we hit pending data paths
+for _ in range(3):
+    res = poller.poll(100)
+    if res[0][1] & POLLIN:
+        try:
+            ssl_client.read(100)
+        except OSError:
+            pass
 
-# Test error case (line 564) by trying to write to closed socket
+# Test error case (line 564)
 ssl_client.close()
 try:
     ssl_client.write(b'test')
@@ -95,7 +93,6 @@ try:
     ssl_client.setblocking(False)
 
     # Test poll when there's pending data
-    from select import poll, POLLIN, POLLOUT
     poller = poll()
     poller.register(ssl_client, POLLIN | POLLOUT)
     
@@ -108,7 +105,7 @@ try:
     res = poller.poll(100)
     # Should return POLLNVAL for closed socket
     assert len(res) == 1
-    assert res[0][1] & select.POLLNVAL
+    assert res[0][1] & POLLNVAL
 
 finally:
     ssl_server.close()
