@@ -38,20 +38,19 @@
 #include "pendsv.h"
 
 #if defined(STM32H7)
-#define MICROPY_PY_MACHINE_UART_CLASS_CONSTANTS \
-    { MP_ROM_QSTR(MP_QSTR_RTS), MP_ROM_INT(UART_HWCONTROL_RTS) }, \
-    { MP_ROM_QSTR(MP_QSTR_CTS), MP_ROM_INT(UART_HWCONTROL_CTS) }, \
-    { MP_ROM_QSTR(MP_QSTR_IRQ_RXIDLE), MP_ROM_INT(UART_FLAG_IDLE) }, \
-    { MP_ROM_QSTR(MP_QSTR_IRQ_RX), MP_ROM_INT(UART_FLAG_RXNE) }, \
+#define MICROPY_PY_MACHINE_UART_INV_ENTRY \
     { MP_ROM_QSTR(MP_QSTR_INV_TX), MP_ROM_INT(UART_ADVFEATURE_TXINVERT_INIT) }, \
-    { MP_ROM_QSTR(MP_QSTR_INV_RX), MP_ROM_INT(UART_ADVFEATURE_RXINVERT_INIT) }, \
+    { MP_ROM_QSTR(MP_QSTR_INV_RX), MP_ROM_INT(UART_ADVFEATURE_RXINVERT_INIT) },
 #else
+#define MICROPY_PY_MACHINE_UART_INV_ENTRY
+#endif
+
 #define MICROPY_PY_MACHINE_UART_CLASS_CONSTANTS \
     { MP_ROM_QSTR(MP_QSTR_RTS), MP_ROM_INT(UART_HWCONTROL_RTS) }, \
     { MP_ROM_QSTR(MP_QSTR_CTS), MP_ROM_INT(UART_HWCONTROL_CTS) }, \
     { MP_ROM_QSTR(MP_QSTR_IRQ_RXIDLE), MP_ROM_INT(UART_FLAG_IDLE) }, \
     { MP_ROM_QSTR(MP_QSTR_IRQ_RX), MP_ROM_INT(UART_FLAG_RXNE) }, \
-#endif
+    MICROPY_PY_MACHINE_UART_INV_ENTRY \
 
 static void mp_machine_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_uart_obj_t *self = MP_OBJ_TO_PTR(self_in);
@@ -137,18 +136,19 @@ static void mp_machine_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_
         }
         #if defined(STM32H7)
         mp_print_str(print, ", invert=");
-        if ((cr2 & (USART_CR2_TXINV | USART_CR2_RXINV)) == 0) {
+        if (!(cr2 & (USART_CR2_TXINV | USART_CR2_RXINV))) {
             mp_print_str(print, "0");
-        }
-        else if ((cr2 & (USART_CR2_TXINV | USART_CR2_RXINV)) == (USART_CR2_TXINV | USART_CR2_RXINV)) {
-            mp_print_str(print, "INV_TX|INV_RX");
-        }
-        else if (cr2 & USART_CR2_TXINV) {
-            mp_print_str(print, "INV_TX");
-        }
-        else if (cr2 & USART_CR2_RXINV) {
-            mp_print_str(print, "INV_RX");
-        }
+        } else {
+			if (cr2 & USART_CR2_TXINV) {
+                mp_print_str(print, "INV_TX");
+                if (cr2 & USART_CR2_RXINV) {
+                    mp_print_str(print, "|");
+                }
+            }
+            if (cr2 & USART_CR2_RXINV) {
+                mp_print_str(print, "INV_RX");
+            }
+		}
         #endif
         mp_print_str(print, ")");
     }
@@ -185,10 +185,9 @@ static void mp_machine_uart_init_helper(machine_uart_obj_t *self, size_t n_args,
 
     // parse args
     struct {
-        #if defined(STM32H7) 
-        mp_arg_val_t baudrate, bits, parity, stop, flow, timeout, timeout_char, rxbuf, read_buf_len, invert;
-        #else
         mp_arg_val_t baudrate, bits, parity, stop, flow, timeout, timeout_char, rxbuf, read_buf_len;
+		#if defined(STM32H7) 
+		mp_arg_val_t invert;
         #endif
     } args;
     mp_arg_parse_all(n_args, pos_args, kw_args,
