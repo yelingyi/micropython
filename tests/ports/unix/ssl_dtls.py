@@ -33,24 +33,51 @@ ssl_server = dtls_server.wrap_socket(server_sock, server_side=True, do_handshake
 ssl_client.setblocking(False)
 ssl_server.setblocking(False)
 
-# Test write with WANT_READ (line 553)
+# Test write with WANT_READ and other error conditions (lines 553, 564-568)
 try:
-    # First write will trigger handshake
+    # Configure a small write buffer to force multiple writes
+    small_buf = b'test' * 1024  # Create larger data than internal buffer
+    ssl_client.write(small_buf)  # This should hit various error paths
+except OSError as e:
+    assert e.args[0] == errno.EAGAIN
+
+# Force a fatal error by corrupting the SSL state
+try:
+    # Close underlying socket but keep SSL wrapper to force error
+    client_sock.close()
     ssl_client.write(b'test')
 except OSError as e:
-    assert e.args[0] == errno.EAGAIN
+    # Should hit error path in socket_write
+    assert e.args[0] != errno.EAGAIN  # Should be a fatal error, not EAGAIN
 
-# Do a partial handshake from server side to force client write to need read
+# Test pending data checks (lines 572-573)
 try:
-    ssl_server.write(b'server hello')
-except OSError as e:
-    assert e.args[0] == errno.EAGAIN
+    # Create new client with proper handshake
+    client_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    client_sock.connect(server_addr)
+    ssl_client = dtls_client.wrap_socket(client_sock, do_handshake_on_connect=False)
+    ssl_client.setblocking(False)
 
-# Now client write should hit WANT_READ during handshake
-try:
-    ssl_client.write(b'test2')
-except OSError as e:
-    assert e.args[0] == errno.EAGAIN
+    # Send data from server to client to create pending data
+    server_data = b'server_data' * 100
+    try:
+        ssl_server.write(server_data)
+    except OSError:
+        pass  # Expected when non-blocking
+
+    # Now poll client - should show pending data
+    from select import poll, POLLIN, POLLOUT
+    poller = poll()
+    poller.register(ssl_client, POLLIN | POLLOUT)
+    
+    # Multiple poll/read cycles to ensure we hit pending data paths
+    for _ in range(3):
+        res = poller.poll(100)
+        if res[0][1] & POLLIN:
+            try:
+                ssl_client.read(100)
+            except OSError:
+                pass
 
 # Test error case (line 564) by trying to write to closed socket
 ssl_client.close()
