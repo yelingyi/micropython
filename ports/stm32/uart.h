@@ -82,10 +82,6 @@ extern const mp_irq_methods_t uart_irq_methods;
 void uart_init0(void);
 void uart_deinit_all(void);
 bool uart_exists(int uart_id);
-#if defined(STM32H7)
-bool uart_init(machine_uart_obj_t *uart_obj,
-    uint32_t baudrate, uint32_t bits, uint32_t parity, uint32_t stop, uint32_t flow, uint32_t invert);
-#else
 bool uart_init(machine_uart_obj_t *uart_obj,
     uint32_t baudrate, uint32_t bits, uint32_t parity, uint32_t stop, uint32_t flow, uint32_t invert);
 void uart_irq_config(machine_uart_obj_t *self, bool enable);
