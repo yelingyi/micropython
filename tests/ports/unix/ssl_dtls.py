@@ -11,6 +11,7 @@ try:
     import ssl.PROTOCOL_DTLS_SERVER
 except NameError:
     print("SKIP")
+    raise SystemExit
 
 
 # Test constructing with arguments.
