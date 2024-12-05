@@ -26,9 +26,10 @@ except ValueError:
 
 # Test certificate verification callback error path
 try:
+
     def bad_verify_callback(cert, depth):
         raise ValueError("Test callback error")
-    
+
     context = ssl.SSLContext(ssl.PROTOCOL_DTLS_CLIENT)
     context.verify_callback = bad_verify_callback
     # Need to trigger the callback - try to connect to any server
