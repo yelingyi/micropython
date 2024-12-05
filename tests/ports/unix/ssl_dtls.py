@@ -23,6 +23,7 @@ try:
 except ValueError:
     print("OK: ValueError raised for invalid protocol")
 
+
 # Test certificate verification callback error path
 try:
     def bad_verify_callback(cert, depth):
