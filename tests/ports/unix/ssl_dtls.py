@@ -18,7 +18,7 @@ dtls_server = ssl.SSLContext(ssl.PROTOCOL_DTLS_SERVER)
 # Test exception handling paths
 try:
     # Create a context with invalid protocol to trigger error
-    invalid_context = ssl.SSLContext(0xff)
+    invalid_context = ssl.SSLContext(0xFF)
     print("FAIL: Should have raised ValueError")
 except ValueError:
     print("OK: ValueError raised for invalid protocol")
