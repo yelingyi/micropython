@@ -561,9 +561,7 @@ static int _mbedtls_timing_get_delay(void *ctx) {
         return -1;
     }
 
-    mp_uint_t now = mp_hal_ticks_ms() & (MICROPY_PY_TIME_TICKS_PERIOD - 1);
-    mp_int_t elapsed_ms = ((now - o->timer_start_ms + MICROPY_PY_TIME_TICKS_PERIOD / 2) & (MICROPY_PY_TIME_TICKS_PERIOD - 1))
-        - MICROPY_PY_TIME_TICKS_PERIOD / 2;
+    mp_int_t elapsed_ms = mp_hal_ticks_ms() - o->timer_start_ms;
 
     if (elapsed_ms >= o->timer_fin_ms) {
         return 2;
