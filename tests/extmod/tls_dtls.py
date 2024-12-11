@@ -1,15 +1,13 @@
 # Very basic test of DTLS.
 
 try:
-    import tls
-    import tls.PROTOCOL_DTLS_CLIENT
-    import tls.PROTOCOL_DTLS_SERVER
-except (ImportError, AttributeError):
+    from tls import PROTOCOL_DTLS_CLIENT, PROTOCOL_DTLS_SERVER, SSLContext
+except (ImportError, NameError):
     print("SKIP")
     raise SystemExit
 
 
 # Test constructing with arguments.
-dtls_client = tls.SSLContext(tls.PROTOCOL_DTLS_CLIENT)
-dtls_server = tls.SSLContext(tls.PROTOCOL_DTLS_SERVER)
+dtls_client = SSLContext(PROTOCOL_DTLS_CLIENT)
+dtls_server = SSLContext(PROTOCOL_DTLS_SERVER)
 print('OK')
