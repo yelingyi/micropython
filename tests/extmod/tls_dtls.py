@@ -2,7 +2,7 @@
 
 try:
     from tls import PROTOCOL_DTLS_CLIENT, PROTOCOL_DTLS_SERVER, SSLContext
-except (ImportError, NameError):
+except ImportError:
     print("SKIP")
     raise SystemExit
 
