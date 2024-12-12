@@ -47,4 +47,8 @@ print('Wrapped DTLS Client')
 dtls_client.write(b'test')  # This will start the handshake
 data = dtls_server.read(1024)  # This should trigger timing during handshake
 
+# Reset timing state to trigger the untested condition
+dtls_client.write(b'reset')  # This will reset timing state internally
+data = dtls_server.read(1024)  # This triggers another timing check with fin_ms=0
+
 print('OK')
