@@ -2,30 +2,20 @@
 
 # prerequisites
 #
-# https://github.com/WebAssembly/wasi-libc/pull/483 (wasi-sdk 22.0)
-# https://github.com/WebAssembly/wasi-libc/pull/473 (wasi-sdk 22.0)
-# https://github.com/WebAssembly/binaryen/pull/6294 (version_117)
-# https://github.com/WebAssembly/binaryen/pull/6259 (version_117)
-# https://github.com/llvm/llvm-project/pull/84137 (LLVM 19?)
-#
-# WASI_SDK: wasi-sdk 22.0 or later
+# WASI_SDK: wasi-sdk 25.0 or later
 # WASM_OPT: binaryen wasm-opt version_117 or later
-# WASI_SYSROOT: sysroot from wasi-sdk 22.0 or later
-# CLANG: clang from LLVM 19 or later, which contains the above mentioned PR
 
-# REVISIT:
+# Note:
 # we specify the target "--target=wasm32-wasi" explicitly below for the case
 # where $CLANG is built with a configuration different from wasi-sdk.
-# it can be simplified once LLVM 19 becomes a part of wasi-sdk.
 # ditto for "-B ${WASI_SDK}/bin/".
 
-WASI_SDK=${WASI_SDK:-/opt/wasi-sdk-22.0}
+WASI_SDK=${WASI_SDK:-/opt/wasi-sdk-25.0}
 WASI_SYSROOT=${WASI_SYSROOT:-${WASI_SDK}/share/wasi-sysroot}
-BINARYEN_BIN=${BINARYEN_BIN:-${HOME}/git/wasm/binaryen/b/bin}
-WASM_OPT=${WASM_OPT:-${BINARYEN_BIN}/wasm-opt}
+WASM_OPT=${WASM_OPT:-wasm-opt}
 RESOURCE_DIR=$(${WASI_SDK}/bin/clang --print-resource-dir)
-LLVM_BUILD_DIR=${LLVM_BUILD_DIR:-/Volumes/PortableSSD/llvm/build}
-CLANG=${CLANG:-${LLVM_BUILD_DIR}/bin/clang}
+LLVM_DIR=${LLVM_DIR:-${WASI_SDK}}
+CLANG=${CLANG:-${LLVM_DIR}/bin/clang}
 CC="${CLANG} --sysroot ${WASI_SYSROOT} -resource-dir ${RESOURCE_DIR}"
 
 CFLAGS="--target=wasm32-wasi -D_WASI_EMULATED_PROCESS_CLOCKS -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_MMAN -mllvm -wasm-enable-sjlj" \
