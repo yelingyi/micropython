@@ -43,12 +43,18 @@ dtls_client_ctx.verify_mode = CERT_NONE
 dtls_client = dtls_client_ctx.wrap_socket(client_socket, do_handshake_on_connect=False)
 print('Wrapped DTLS Client')
 
+# First operation initiates handshake
+dtls_client.write(b'test')
 
-dtls_client.write(b'test')  # This will start the handshake
-data = dtls_server.read(1024)  # This should trigger timing during handshake
+# Sleep a short time to ensure we hit the intermediate timing state
+import time
+time.sleep_ms(100)  # Wait enough to hit timer_int_ms but less than timer_fin_ms
 
-# Reset timing state to trigger the untested condition
-dtls_client.write(b'reset')  # This will reset timing state internally
-data = dtls_server.read(1024)  # This triggers another timing check with fin_ms=0
+# This read should trigger timing check with elapsed_ms > timer_int_ms
+data = dtls_server.read(1024)
+
+# Continue with handshake
+dtls_client.write(b'final')
+data = dtls_server.read(1024)
 
 print('OK')
