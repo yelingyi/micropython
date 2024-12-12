@@ -10,6 +10,8 @@
 # where $CLANG is built with a configuration different from wasi-sdk.
 # ditto for "-B ${WASI_SDK}/bin/".
 
+set -e
+
 WASI_SDK=${WASI_SDK:-/opt/wasi-sdk-25.0}
 WASI_SYSROOT=${WASI_SYSROOT:-${WASI_SDK}/share/wasi-sysroot}
 WASM_OPT=${WASM_OPT:-wasm-opt}
