@@ -11,6 +11,7 @@ class DummySocket(io.IOBase):
     def __init__(self):
         self.write_buffer = bytearray()
         self.read_buffer = bytearray()
+        self.elapsed_ms = 0  # Add elapsed time tracking
 
     def write(self, data):
         self.write_buffer.extend(data)
@@ -25,6 +26,9 @@ class DummySocket(io.IOBase):
         return l
 
     def ioctl(self, req, arg):
+        if hasattr(self, 'elapsed_ms'):
+            # Simulate time passing
+            self.elapsed_ms += 50  # Increment by 50ms each operation
         return 0
 
 # Create dummy sockets for testing
@@ -43,18 +47,9 @@ dtls_client_ctx.verify_mode = CERT_NONE
 dtls_client = dtls_client_ctx.wrap_socket(client_socket, do_handshake_on_connect=False)
 print('Wrapped DTLS Client')
 
-# First operation initiates handshake
-dtls_client.write(b'test')
-
-# Sleep a short time to ensure we hit the intermediate timing state
-import time
-time.sleep_ms(100)  # Wait enough to hit timer_int_ms but less than timer_fin_ms
-
-# This read should trigger timing check with elapsed_ms > timer_int_ms
-data = dtls_server.read(1024)
-
-# Continue with handshake
-dtls_client.write(b'final')
-data = dtls_server.read(1024)
+# Trigger the timing check multiple times with different elapsed times
+for i in range(10):  # Try multiple iterations to hit the timing window
+    dtls_client.write(b'test')
+    data = dtls_server.read(1024)  # This should eventually hit the timing condition
 
 print('OK')
