@@ -213,9 +213,8 @@ static mp_obj_t vfs_rom_make_new(const mp_obj_type_t *type, size_t n_args, size_
         mp_raise_OSError(MP_ENODEV);
     }
 
-    mp_decode_uint(&self->filesystem);
-    mp_uint_t len = mp_decode_uint(&self->filesystem);
-    self->filesystem_top = self->filesystem + len;
+    // The ROMFS is a record itself, so enter into it and compute its limit.
+    extract_record(&self->filesystem, &self->filesystem_top);
 
     return MP_OBJ_FROM_PTR(self);
 }
