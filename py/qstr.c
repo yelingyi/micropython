@@ -309,7 +309,7 @@ qstr qstr_from_str(const char *str) {
     return qstr_from_strn(str, strlen(str));
 }
 
-static qstr qstr_from_strn_helper(const char *str, size_t len, bool is_static) {
+static qstr qstr_from_strn_helper(const char *str, size_t len, bool data_is_static) {
     QSTR_ENTER();
     qstr q = qstr_find_strn(str, len);
     if (q == 0) {
@@ -321,7 +321,8 @@ static qstr qstr_from_strn_helper(const char *str, size_t len, bool is_static) {
             mp_raise_msg(&mp_type_RuntimeError, MP_ERROR_TEXT("name too long"));
         }
 
-        if (is_static) {
+        if (data_is_static) {
+            // Given string data will be forever available so use it directly.
             assert(str[len] == '\0');
             goto add;
         }
@@ -383,6 +384,7 @@ qstr qstr_from_strn(const char *str, size_t len) {
 }
 
 #if MICROPY_VFS_ROM
+// Create a new qstr that can forever reference the given string data.
 qstr qstr_from_strn_static(const char *str, size_t len) {
     return qstr_from_strn_helper(str, len, true);
 }
