@@ -96,7 +96,7 @@ struct _mp_obj_vfs_rom_t {
     mp_obj_base_t base;
     mp_obj_t memory;
     const uint8_t *filesystem;
-    const uint8_t *filesystem_top;
+    const uint8_t *filesystem_end;
 };
 
 static mp_uint_t extract_record(const uint8_t **fs, const uint8_t **fs_next) {
@@ -133,7 +133,7 @@ static void extract_data(mp_obj_vfs_rom_t *self, const uint8_t *fs, const uint8_
 // `path` must be null-terminated.
 mp_import_stat_t mp_vfs_rom_search_filesystem(mp_obj_vfs_rom_t *self, const char *path, size_t *size_out, const uint8_t **data_out) {
     const uint8_t *fs = self->filesystem;
-    const uint8_t *fs_top = self->filesystem_top;
+    const uint8_t *fs_top = self->filesystem_end;
     size_t path_len = strlen(path);
     if (*path == '/') {
         // An optional slash at the start of the path enters the top-level filesystem.
@@ -214,7 +214,7 @@ static mp_obj_t vfs_rom_make_new(const mp_obj_type_t *type, size_t n_args, size_
     }
 
     // The ROMFS is a record itself, so enter into it and compute its limit.
-    extract_record(&self->filesystem, &self->filesystem_top);
+    extract_record(&self->filesystem, &self->filesystem_end);
 
     return MP_OBJ_FROM_PTR(self);
 }
@@ -348,7 +348,7 @@ static MP_DEFINE_CONST_FUN_OBJ_2(vfs_rom_stat_obj, vfs_rom_stat);
 static mp_obj_t vfs_rom_statvfs(mp_obj_t self_in, mp_obj_t path_in) {
     mp_obj_vfs_rom_t *self = MP_OBJ_TO_PTR(self_in);
     (void)path_in;
-    size_t filesystem_len = self->filesystem_top - self->filesystem;
+    size_t filesystem_len = self->filesystem_end - self->filesystem;
     mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(10, NULL));
     t->items[0] = MP_OBJ_NEW_SMALL_INT(1); // f_bsize
     t->items[1] = MP_OBJ_NEW_SMALL_INT(0); // f_frsize
