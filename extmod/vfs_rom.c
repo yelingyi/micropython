@@ -48,7 +48,8 @@
 // - 2 = verbatim data, used to store file data.
 // - 3 = indirect data, pointer to offset within the ROMFS payload.
 // - 4 = a directory: payload contains a varuint which is the length of the directory
-//       name in bytes, then the name, then optional nested records.
+//       name in bytes, then the name, then optional nested records for the contents
+//       of the directory (including optional metadata).
 // - 5 = a file: payload contains a varuint which is the length of the filename in bytes
 //       then the name, then optional nested records.
 //
