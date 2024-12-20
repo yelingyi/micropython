@@ -83,14 +83,15 @@
 #define ROMFS_HEADER_BYTE1 (0x80 | 'M')
 #define ROMFS_HEADER_BYTE2 (0x00 | '1')
 
-enum {
-    ROMFS_RECORD_KIND_UNUSED = 0,
-    ROMFS_RECORD_KIND_PADDING,
-    ROMFS_RECORD_KIND_DATA_VERBATIM,
-    ROMFS_RECORD_KIND_DATA_POINTER,
-    ROMFS_RECORD_KIND_DIRECTORY,
-    ROMFS_RECORD_KIND_FILE,
-};
+// Values for `record_kind_t`.
+#define ROMFS_RECORD_KIND_UNUSED (0)
+#define ROMFS_RECORD_KIND_PADDING (1)
+#define ROMFS_RECORD_KIND_DATA_VERBATIM (2)
+#define ROMFS_RECORD_KIND_DATA_POINTER (3)
+#define ROMFS_RECORD_KIND_DIRECTORY (4)
+#define ROMFS_RECORD_KIND_FILE (5)
+
+typedef mp_uint_t record_kind_t;
 
 struct _mp_obj_vfs_rom_t {
     mp_obj_base_t base;
@@ -99,8 +100,8 @@ struct _mp_obj_vfs_rom_t {
     const uint8_t *filesystem_end;
 };
 
-static mp_uint_t extract_record(const uint8_t **fs, const uint8_t **fs_next) {
-    mp_uint_t record_kind = mp_decode_uint(fs);
+static record_kind_t extract_record(const uint8_t **fs, const uint8_t **fs_next) {
+    record_kind_t record_kind = mp_decode_uint(fs);
     mp_uint_t record_len = mp_decode_uint(fs);
     *fs_next = *fs + record_len;
     return record_kind;
@@ -111,7 +112,7 @@ static void extract_data(mp_obj_vfs_rom_t *self, const uint8_t *fs, const uint8_
     *data_out = NULL;
     while (fs < fs_top) {
         const uint8_t *fs_next;
-        mp_uint_t record_kind = extract_record(&fs, &fs_next);
+        record_kind_t record_kind = extract_record(&fs, &fs_next);
         if (record_kind == ROMFS_RECORD_KIND_DATA_VERBATIM) {
             // Verbatim data.
             *size_out = fs_next - fs;
@@ -142,7 +143,7 @@ mp_import_stat_t mp_vfs_rom_search_filesystem(mp_obj_vfs_rom_t *self, const char
     }
     while (path_len > 0 && fs < fs_top) {
         const uint8_t *fs_next;
-        mp_uint_t record_kind = extract_record(&fs, &fs_next);
+        record_kind_t record_kind = extract_record(&fs, &fs_next);
         if (record_kind == ROMFS_RECORD_KIND_DIRECTORY || record_kind == ROMFS_RECORD_KIND_FILE) {
             // A directory or file record.
             mp_uint_t name_len = mp_decode_uint(&fs);
@@ -259,7 +260,7 @@ static mp_obj_t vfs_rom_ilistdir_it_iternext(mp_obj_t self_in) {
 
     while (self->index < self->index_top) {
         const uint8_t *index_next;
-        mp_uint_t record_kind = extract_record(&self->index, &index_next);
+        record_kind_t record_kind = extract_record(&self->index, &index_next);
         uint32_t type;
         mp_uint_t name_len;
         size_t data_len;
