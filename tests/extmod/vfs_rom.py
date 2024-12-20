@@ -289,6 +289,13 @@ class TestStandalone(TestBase):
             self.assertEqual(f.seek(-1, SEEK_END), 7)
             self.assertEqual(f.read(), "s")
             self.assertEqual(f.seek(1, SEEK_END), 8)
+            with self.assertRaises(OSError):
+                f.seek(-1, SEEK_SET)
+            f.seek(0, SEEK_SET)
+            with self.assertRaises(OSError):
+                f.seek(-1, SEEK_CUR)
+            with self.assertRaises(OSError):
+                f.seek(-100, SEEK_END)
 
     @unittest.skipIf(select is None, "no select module")
     def test_file_ioctl_invalid(self):
