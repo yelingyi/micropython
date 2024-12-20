@@ -181,12 +181,15 @@ static qstr load_qstr(mp_reader_t *reader) {
         return len >> 1;
     }
     len >>= 1;
+
     #if MICROPY_VFS_ROM
+    // If possible, create the qstr from the memory-mapped string data.
     const uint8_t *memmap = mp_reader_try_read_rom(reader, len + 1);
     if (memmap != NULL) {
         return qstr_from_strn_static((const char *)memmap, len);
     }
     #endif
+
     char *str = m_new(char, len);
     read_bytes(reader, (byte *)str, len);
     read_byte(reader); // read and discard null terminator
@@ -196,6 +199,7 @@ static qstr load_qstr(mp_reader_t *reader) {
 }
 
 #if MICROPY_VFS_ROM
+// Create a str/bytes object that can forever reference the given data.
 static mp_obj_t mp_obj_new_str_static(const mp_obj_type_t *type, const byte *data, size_t len) {
     if (type == &mp_type_str) {
         qstr q = qstr_find_strn((const char *)data, len);
@@ -251,6 +255,7 @@ static mp_obj_t load_obj(mp_reader_t *reader) {
         vstr.len = len;
         #endif
         if (memmap == NULL) {
+            // Data could not be memory-mapped, so allocate it in RAM and read it in.
             vstr_init_len(&vstr, len);
             read_bytes(reader, (byte *)vstr.buf, len);
         }
@@ -260,6 +265,7 @@ static mp_obj_t load_obj(mp_reader_t *reader) {
             read_byte(reader); // skip null terminator (it needs to be there for ROM str objects)
             #if MICROPY_VFS_ROM
             if (memmap != NULL) {
+                // Create a str/bytes that references the memory-mapped data.
                 const mp_obj_type_t *t = obj_type == MP_PERSISTENT_OBJ_STR ? &mp_type_str : &mp_type_bytes;
                 return mp_obj_new_str_static(t, memmap, len);
             }
