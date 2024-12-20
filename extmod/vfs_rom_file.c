@@ -117,7 +117,14 @@ static mp_uint_t vfs_rom_file_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t 
             } else { // SEEK_END
                 self->file_offset = self->file_size + s->offset;
             }
-            self->file_offset = MIN(self->file_size, self->file_offset);
+            if (self->file_offset > self->file_size) {
+                if ((ssize_t)s->offset < 0) {
+                    // Seek to before the start of the file.
+                    *errcode = MP_EINVAL;
+                    return MP_STREAM_ERROR;
+                }
+                self->file_offset = self->file_size;
+            }
             s->offset = self->file_offset;
             return 0;
         }
