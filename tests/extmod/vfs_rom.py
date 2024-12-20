@@ -171,8 +171,8 @@ class TestBase(unittest.TestCase):
                 (
                     "dir",
                     (
-                        ("a.py", b""),
-                        ("b.py", b""),
+                        ("a.py", b"x = 1"),
+                        ("b.py", b"x = 2"),
                         ("test.mpy", test_mpy),
                     ),
                 ),
@@ -182,7 +182,7 @@ class TestBase(unittest.TestCase):
         cls.romfs_ilistdir = [
             ("fs.romfs", IFREG, 0, 46),
             ("test.txt", IFREG, 0, 8),
-            ("dir", IFDIR, 0, 188),
+            ("dir", IFDIR, 0, 198),
         ]
         cls.romfs_listdir = [x[0] for x in cls.romfs_ilistdir]
         cls.romfs_listdir_dir = ["a.py", "b.py", "test.mpy"]
@@ -242,16 +242,16 @@ class TestStandalone(TestBase):
 
     def test_stat(self):
         fs = vfs.VfsRom(self.romfs)
-        self.assertEqual(fs.stat(""), (IFDIR, 0, 0, 0, 0, 0, 279, 0, 0, 0))
-        self.assertEqual(fs.stat("/"), (IFDIR, 0, 0, 0, 0, 0, 279, 0, 0, 0))
+        self.assertEqual(fs.stat(""), (IFDIR, 0, 0, 0, 0, 0, 289, 0, 0, 0))
+        self.assertEqual(fs.stat("/"), (IFDIR, 0, 0, 0, 0, 0, 289, 0, 0, 0))
         self.assertEqual(fs.stat("/test.txt"), (IFREG, 0, 0, 0, 0, 0, 8, 0, 0, 0))
-        self.assertEqual(fs.stat("/dir"), (IFDIR, 0, 0, 0, 0, 0, 188, 0, 0, 0))
+        self.assertEqual(fs.stat("/dir"), (IFDIR, 0, 0, 0, 0, 0, 198, 0, 0, 0))
         with self.assertRaises(OSError):
             fs.stat("/does-not-exist")
 
     def test_statvfs(self):
         fs = vfs.VfsRom(self.romfs)
-        self.assertEqual(fs.statvfs(""), (1, 0, 279, 0, 0, 0, 0, 0, 0, 32767))
+        self.assertEqual(fs.statvfs(""), (1, 0, 289, 0, 0, 0, 0, 0, 0, 32767))
 
     def test_open(self):
         fs = vfs.VfsRom(self.romfs)
@@ -344,10 +344,10 @@ class TestMounted(TestBase):
             os.chdir("/test_rom/dir")
 
     def test_stat(self):
-        self.assertEqual(os.stat("/test_rom"), (IFDIR, 0, 0, 0, 0, 0, 279, 0, 0, 0))
-        self.assertEqual(os.stat("/test_rom/"), (IFDIR, 0, 0, 0, 0, 0, 279, 0, 0, 0))
+        self.assertEqual(os.stat("/test_rom"), (IFDIR, 0, 0, 0, 0, 0, 289, 0, 0, 0))
+        self.assertEqual(os.stat("/test_rom/"), (IFDIR, 0, 0, 0, 0, 0, 289, 0, 0, 0))
         self.assertEqual(os.stat("/test_rom/test.txt"), (IFREG, 0, 0, 0, 0, 0, 8, 0, 0, 0))
-        self.assertEqual(os.stat("/test_rom/dir"), (IFDIR, 0, 0, 0, 0, 0, 188, 0, 0, 0))
+        self.assertEqual(os.stat("/test_rom/dir"), (IFDIR, 0, 0, 0, 0, 0, 198, 0, 0, 0))
         with self.assertRaises(OSError):
             os.stat("/test_rom/does-not-exist")
 
@@ -367,8 +367,12 @@ class TestMounted(TestBase):
 
     def test_import_py(self):
         sys.path.append("/test_rom/dir")
-        self.assertEqual(__import__("a").__file__, "/test_rom/dir/a.py")
-        self.assertEqual(__import__("b").__file__, "/test_rom/dir/b.py")
+        a = __import__("a")
+        b = __import__("b")
+        self.assertEqual(a.__file__, "/test_rom/dir/a.py")
+        self.assertEqual(a.x, 1)
+        self.assertEqual(b.__file__, "/test_rom/dir/b.py")
+        self.assertEqual(b.x, 2)
 
     def test_import_mpy(self):
         sys.path.append("/test_rom/dir")
